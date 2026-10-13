@@ -1,0 +1,1368 @@
+<title>Comando Central Nitron</title>
+<style>
+:root{
+  --bg:#0e1116;--card:#161b22;--card2:#1c2230;--bd:#2a3140;--tx:#e6edf3;--mut:#8b98a9;
+  --ac:#4c8dff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--nit:#4c8dff;--mud:#a371f7;--con:#e3853b;--shp:#ee5a3a;--tt:#25d0c6;
+  color-scheme:dark;--mono:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1400px;margin:0 auto;padding-inline:16px;padding-block:18px}
+h1{font-size:19px;margin:0 0 2px}.sub{color:var(--mut);font-size:12px;margin-bottom:14px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:16px;flex-wrap:wrap;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.tab{padding:9px 14px;cursor:pointer;color:var(--mut);border-bottom:2px solid transparent;font-weight:600;font-size:13px;white-space:nowrap}
+.tab.on{color:var(--tx);border-color:var(--ac)}
+.hide{display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px 14px}
+.stat b{font-size:22px}.stat .l{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.stat.bad{border-color:var(--bad)}.stat.warn{border-color:var(--warn)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input,select{background:var(--card2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+.tag{font-size:12px;padding:5px 9px;border-radius:999px;background:var(--card2);border:1px solid var(--bd);color:var(--mut);cursor:pointer;user-select:none}
+.tag.on{background:rgba(76,141,255,.16);border-color:var(--ac);color:#9cc0ff}
+.note{background:var(--card2);border:1px solid var(--bd);border-radius:9px;padding:10px 12px;color:var(--mut);font-size:12px;margin-bottom:12px}
+.btn{background:var(--ac);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-weight:700;cursor:pointer;font-size:12px}
+.btn.ghost{background:transparent;border:1px solid var(--bd);color:var(--mut)}
+.btn:disabled{opacity:.6;cursor:default}
+.cnt{color:var(--mut);font-size:12px;margin-left:auto}
+.pill{padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700}
+.p155{background:rgba(63,185,80,.16);color:#6fd67e}.pkit{background:rgba(210,153,34,.16);color:#e3b341}
+.badge-emp{padding:1px 6px;border-radius:5px;font-size:10px;font-weight:700}
+.be-nit{background:rgba(76,141,255,.16);color:#9cc0ff}.be-mud{background:rgba(163,113,247,.16);color:#c0a1ff}
+.badge-plat{padding:1px 6px;border-radius:5px;font-size:10px;font-weight:700}
+.pl-ML{background:rgba(76,141,255,.14);color:#9cc0ff}.pl-SH{background:rgba(238,90,58,.14);color:#f3a08d}.pl-TT{background:rgba(37,208,198,.14);color:#86e6e0}
+.mg{font-weight:700}.mg.g{color:var(--ok)}.mg.y{color:var(--warn)}.mg.r{color:var(--bad)}
+.mok{color:var(--ok)!important;font-weight:700}.mwarn{color:var(--warn)!important;font-weight:700}.mbad{color:var(--bad)!important;font-weight:700}
+th.sortable{cursor:pointer;user-select:none}th.sortable:hover{color:var(--ac)}th .arr{font-size:9px;opacity:.7}
+.colfw{margin-top:4px}select.colf{width:100%;max-width:140px;font-size:10px;padding:2px 3px;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:5px;text-transform:none;font-weight:400;cursor:pointer}select.colf:focus{outline:1px solid var(--ac)}
+.lnk{font-size:11px;color:var(--ac);text-decoration:none;border:1px solid var(--bd);border-radius:6px;padding:2px 7px;background:rgba(76,141,255,.08)}
+.lnk:hover{text-decoration:underline}.lnk.any{color:#c0a1ff;border-color:rgba(163,113,247,.4);background:rgba(163,113,247,.08)}
+
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--bd);white-space:nowrap}
+th{color:var(--mut);font-size:11px;text-transform:uppercase;position:sticky;top:0;background:var(--card2);z-index:2;box-shadow:0 1px 0 var(--bd)}
+td.r,th.r{text-align:right}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--card2)}
+td.desc{white-space:normal;min-width:160px;max-width:300px;color:var(--mut)}
+td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;color:var(--mut)}
+.yes{color:var(--ok);font-weight:700}.no{color:var(--mut)}
+.detrow td{background:var(--card2);padding:0}
+.detr{padding:12px 14px;display:flex;flex-wrap:wrap;gap:12px}
+.detcard{border:1px solid var(--bd);border-radius:8px;padding:10px 12px;background:var(--card);min-width:230px;max-width:100%;flex:0 1 auto;box-sizing:border-box;overflow-wrap:anywhere;word-break:break-word}
+.detcard h5{margin:0 0 7px;font-size:11px;text-transform:uppercase;letter-spacing:.3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.calcline{display:flex;justify-content:space-between;gap:16px;padding:2px 0;font-size:12px;border-bottom:1px dashed var(--bd)}
+.calcline .l,.calcline .v{min-width:0;overflow-wrap:anywhere}
+.calcline:last-of-type{border-bottom:none}.calcline .l{color:var(--mut)}.calcline .v{font-variant-numeric:tabular-nums;font-weight:600}
+.calcline.tot .v{color:var(--ac)}
+.links{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.simrow{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.simrow input{width:58px;padding:4px 6px}
+.aprovebox{margin-top:8px;border:1px solid var(--ac);border-radius:8px;padding:9px 10px;background:rgba(76,141,255,.07)}
+.aprovebox code{color:var(--ac);font-family:var(--mono);font-size:11px}
+.pwin{width:110px}
+.c-any{color:var(--ac);font-weight:700}.c-both{color:var(--ok);font-weight:700}.c-real{color:var(--bad);font-weight:700}.c-semreal{color:var(--warn);font-weight:700}.c-no{color:var(--mut)}
+.dotA{width:8px;height:8px;border-radius:50%;display:inline-block}
+.d-active{background:var(--ok)}.d-paused{background:var(--mut)}.d-closed{background:var(--bad)}.d-none{background:var(--bd)}
+.mk-ML{color:var(--nit)}.mk-SH{color:var(--shp)}.mk-TT{color:var(--tt)}
+.tablewrap{overflow:auto;max-height:72vh;border:1px solid var(--bd);border-radius:10px}
+.grp{background:var(--card);border:1px solid var(--bd);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.ghead{display:flex;gap:12px;align-items:center;padding:11px 14px;background:var(--card2);flex-wrap:wrap}
+.ghead .ref{font-weight:800;font-size:14px;font-family:var(--mono)}.ghead .ds{color:var(--mut);flex:1;min-width:140px;font-size:13px}
+.k{display:flex;flex-direction:column;align-items:flex-end}.k b{font-size:14px}.k .l{font-size:10px;color:var(--mut);text-transform:uppercase}
+.chn{display:flex;flex-direction:column;gap:1px;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;min-width:140px}
+.chn .cl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;display:flex;align-items:center;gap:5px}
+.criarcard{background:var(--card);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.criarcard img{width:100%;height:150px;object-fit:contain;background:#fff}
+.criarcard .cc{padding:10px 12px}.criarcard .ct{font-size:12px;height:48px;overflow:hidden}
+.matgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-bottom:12px}
+.toggle-all{font-size:12px;color:var(--ac);cursor:pointer;margin-bottom:10px;display:inline-block}
+.emp{color:var(--mut);font-size:12px;font-style:italic;padding:10px}
+</style>
+<div class="wrap">
+  <h1>Comando Central Nitron</h1>
+  <div class="sub">Anymarket = hub · custo Sankhya · taxa/frete reais · imposto por regime · concorrência raspada · <span id="stamp"></span> · <a id="refreshBtn" style="color:var(--ac);cursor:pointer">↻ atualizar</a></div>
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-t="prec">💰 Precificação</div>
+    <div class="tab" data-t="cm">🏷️ Canais & Mercado</div>
+    <div class="tab" data-t="criar">🆕 Criar anúncios</div>
+    <div class="tab" data-t="rev">📡 Revendedores</div>
+    <div class="tab" data-t="conc">🔗 Conciliação</div>
+    <div class="tab" data-t="vendas">📈 Vendas & Desempenho</div>
+    <div class="tab" data-t="catalogo">🏆 Catálogo ML</div>
+    <div class="tab" data-t="conflitos">⚠️ Conflitos</div>
+    <div class="tab" data-t="taxas">📋 Regras de Taxas</div>
+  </div>
+
+  <!-- PRECIFICAÇÃO -->
+  <div id="prec">
+    <div class="cards" id="stats"></div>
+    <div class="note">Cada linha é um anúncio. Clique para abrir a <b>memória de cálculo</b> da plataforma (custo → taxa → imposto → frete → embalagem → lucro), o simulador de margem e o botão <b>Aprovar</b> (com senha). ML usa taxa/frete reais da API; Shopee usa a tabela de comissão + taxa fixa por faixa.</div>
+    <div class="bar">
+      <input id="q" placeholder="Buscar referência, descrição ou título…" style="min-width:200px">
+      <select id="pLinha"><option value="">Todas as categorias</option></select>
+      <span class="note" style="margin:0 2px">↓ filtre Empresa/Plataforma/Status no cabeçalho</span>
+      <span class="tag on" data-f="todos">Todos</span>
+      <span class="tag" data-f="prejuizo">Prejuízo (&lt;0)</span>
+      <span class="tag" data-f="m0_10">0–10%</span>
+      <span class="tag" data-f="m10_20">10–20%</span>
+      <span class="tag" data-f="mge20">≥20%</span>
+      <span class="tag" data-f="p79">≥R$79 c/ frete</span>
+      <span class="tag" data-f="ativos">● Só ativos</span>
+      <span class="tag" data-f="pausados">⏸ Só pausados</span>
+      <span class="tag" data-f="semestoque">⛔ Sem estoque CD</span>
+      <span class="tag" data-f="frete79" title="ML com frete grátis ligado abaixo de R$79 (dá p/ desligar)">🚚 Frete grátis &lt;R$79</span>
+      <span class="tag" data-f="cores" title="anúncio ML com 2+ ofertas/cores no Anymarket">🎨 Anúncio c/ várias cores</span>
+      <span class="tag" data-f="semcusto">Sem custo</span>
+      <span class="tag" data-f="foratab">Fora da Tabela Sankhya</span>
+      <span class="tag" data-f="kit">Kits</span>
+      <button class="btn ghost" id="xlPrec">Copiar p/ Excel</button>
+      <span class="cnt" id="cnt"></span>
+    </div>
+    <div class="tablewrap"><table id="tP"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- CANAIS & MERCADO -->
+  <div id="cm" class="hide">
+    <div class="note">Cada linha é uma <b>referência</b> com o preço em <b>cada canal lado a lado</b> (Nitron/Mundo UD · ML/Shopee, com bolinha de status) + a <b>Margem</b> do pior canal (vermelho = prejuízo) + a <b>concorrência</b> (mín–máx, nº ofertas) e quanto estamos acima/abaixo + vendas 30d. Clique na linha para o detalhe/memória por canal e as ofertas dos concorrentes.</div>
+    <div class="bar">
+      <input id="qcm" placeholder="Buscar referência, descrição ou título…" style="min-width:200px">
+      <select id="cmEmp"><option value="">Todas as empresas</option></select>
+      <select id="cmPlat"><option value="">Todas as plataformas</option></select>
+      <select id="cmLinha"><option value="">Todas as categorias</option></select>
+      <button class="btn ghost" id="xlCM">Copiar p/ Excel</button>
+      <span class="cnt" id="cntCM"></span>
+    </div>
+    <div class="bar">
+      <span class="tag on" data-fcm="">Todos</span>
+      <span class="tag" data-fcm="prejuizo">Prejuízo (&lt;0)</span>
+      <span class="tag" data-fcm="m0_10">0–10%</span>
+      <span class="tag" data-fcm="m10_20">10–20%</span>
+      <span class="tag" data-fcm="mge20">≥20%</span>
+      <span class="tag" data-fcm="ativos">● Só ativos</span>
+      <span class="tag" data-fcm="pausados">⏸ Só pausados</span>
+      <span class="tag" data-fcm="semestoque">⛔ Sem estoque CD</span>
+      <span class="tag" data-fcm="conc">Só com concorrência</span>
+      <span class="tag" data-fcm="acima">Acima do concorrente</span>
+      <span class="tag" data-fcm="baixou">🔻 Concorrente baixou (7d)</span>
+    </div>
+    <div class="tablewrap"><table id="tCM"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- CRIAR -->
+  <div id="criar" class="hide">
+    <div class="cards" id="criarStats"></div>
+    <div class="note">Candidatos a <b>novo anúncio</b> (estoque ≥200 + custo + sem anúncio). <b>Nada publica sozinho</b>.</div>
+    <div class="note" style="border-color:var(--ac)"><b>Cadastro correto (Sankhya → Anymarket):</b> clique na linha de um produto <b>pronto</b> e use <b>🏭 Cadastrar no Anymarket</b> — ele monta a proposta do Sankhya (título, descrição, categoria, cores) com o <b>preço-alvo</b> já preenchido; você revisa, faz a <b>prévia</b> e <b>publica com senha</b>. O Anymarket depois espalha pras plataformas. <i>(Nada de POST direto — isso duplicaria no Sankhya.)</i></div>
+    <div class="bar" style="margin-top:2px">
+      <button class="btn ghost" id="btnDry">Ver resumo dos candidatos</button>
+      <span class="cnt" id="dryInfo"></span>
+    </div>
+    <div id="dryOut" style="margin-bottom:10px"></div>
+    <div class="bar"><input id="qc" placeholder="Buscar referência/título…" style="min-width:200px">
+      <span class="tag on" data-fc2="todos">Todos</span>
+      <span class="tag" data-fc2="pronto">Prontos p/ cadastrar</span>
+      <span class="tag" data-fc2="semfoto">Sem foto</span>
+      <span class="tag" data-fc2="semean">Sem EAN</span>
+      <span class="tag" data-fc2="semestoque">⛔ Sem estoque CD</span>
+      <button class="btn ghost" id="xlCriar">Copiar p/ Excel</button>
+      <span class="cnt" id="cntC"></span></div>
+    <div class="tablewrap"><table id="tCriar"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- REVENDEDORES -->
+  <div id="rev" class="hide">
+    <div class="cards" id="revStats"></div>
+    <div class="bar"><input id="qr" placeholder="Buscar revendedor / razão social…" style="min-width:240px"><button class="btn ghost" id="xlR">Copiar p/ Excel</button><span class="cnt" id="cntR"></span></div>
+    <div class="note">Clique no revendedor para ver os anúncios dele (com link).</div>
+    <div class="tablewrap"><table id="tblRev"><thead><tr><th>Revendedor</th><th>Marketplace</th><th class="r">Anúncios</th><th>CNPJ</th><th>Razão social</th><th>Município</th></tr></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- CONCILIAÇÃO -->
+  <div id="conc" class="hide">
+    <div class="note">Base = <b>Tabela Sankhya</b> (clube atacado). Em teoria todo item da tabela está no Anymarket. O Anymarket pode ter a mais: <b>kits</b> (o <b>pai</b> é montado no Anymarket e puxa os SKUs do Sankhya — o pai não existe no Sankhya) e itens fora de linha. Empresa nova no Anymarket aparece sozinha. Clique na linha para abrir os links.</div>
+    <span class="toggle-all" id="verTodas">▸ ver todas as plataformas (148)</span>
+    <div id="matriz" class="matgrid"></div>
+    <div class="bar">
+      <input id="qco" placeholder="Buscar referência…" style="min-width:160px">
+      <select id="fEmp"><option value="">Todas as empresas</option></select>
+      <select id="fPlat"><option value="">Todas as plataformas</option></select>
+      <select id="coLinha"><option value="">Todas as categorias</option></select>
+      <span class="tag on" data-fco="todos">Todos</span>
+      <span class="tag" data-fco="155foraany">Na Tabela Sankhya, fora do Anymarket</span>
+      <span class="tag" data-fco="forahub">Anúncio real fora do Anymarket</span>
+      <span class="tag" data-fco="anyfora155">No Anymarket, fora da Tabela Sankhya</span>
+      <span class="tag" data-fco="kit">Kits</span>
+      <button class="btn ghost" id="xlCo">Copiar p/ Excel</button>
+      <span class="cnt" id="cntCo"></span>
+    </div>
+    <div style="font-size:11px;color:var(--mut);margin:-4px 0 10px">Legenda por canal: <span class="c-any">● azul</span> publicado no Anymarket · <span class="c-both">● verde</span> no Anymarket <b>e</b> real · <span class="c-real">● vermelho</span> real <b>fora</b> do Anymarket · <span class="c-semreal">● amarelo</span> no Anymarket sem real · <span class="c-no">○</span> ausente</div>
+    <div class="tablewrap"><table id="tCo"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- VENDAS & DESEMPENHO -->
+  <div id="vendas" class="hide">
+    <div class="note">Vendas reais puxadas do <b>Anymarket</b> (pedidos de todos os marketplaces, por referência Sankhya). Atualiza sozinho a cada 30 min. Cruze o <b>giro</b> (quanto vendeu) com a qualidade do anúncio e a concorrência para saber onde focar. <b>Curva ABC</b>: A = os ~80% da receita.</div>
+    <div class="bar">
+      <span style="font-size:11px;color:var(--mut)">Período:</span>
+      <span class="tag" data-per="7">7 dias</span><span class="tag" data-per="30">30 dias</span><span class="tag" data-per="90">90 dias</span><span class="tag on" data-per="0">Tudo</span>
+      <input type="date" id="vDe" title="de" style="font-size:11px;color-scheme:dark"><input type="date" id="vAte" title="até" style="font-size:11px;color-scheme:dark">
+      <select id="vMp"><option value="">Todas plataformas</option></select>
+      <select id="vEmp"><option value="">Todas empresas</option></select>
+      <select id="vCat"><option value="">Todas categorias</option></select>
+    </div>
+    <div id="vendasKpis" class="matgrid"></div>
+    <div class="bar">
+      <input id="qv" placeholder="Buscar referência/descrição…" style="min-width:180px">
+      <span class="tag on" data-fv="todos">Todos</span>
+      <span class="tag" data-fv="A">Só classe A</span>
+      <span class="tag" data-fv="semanuncio">Sem anúncio no hub</span>
+      <span class="tag" data-fv="perdendo">Concorrente + barato</span>
+      <span class="tag" data-fv="poucaconc">Pouca concorrência (oportunidade)</span>
+      <button class="btn ghost" id="xlV">Copiar p/ Excel</button>
+      <span class="cnt" id="cntV"></span>
+    </div>
+    <div class="tablewrap"><table id="tV"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- CATÁLOGO ML -->
+  <div id="catalogo" class="hide">
+    <div class="note">A Nitron é <b>loja oficial</b> no Mercado Livre — o ideal é ter <b>todos os produtos no catálogo</b> (não "clássico"). Aqui está a lista de trabalho: quem ainda está clássico, quem está sem EAN, e em que catálogos a Nitron <b>não é a dona</b> (dono = menor preço do catálogo). Clique p/ ver os anúncios e abrir no Anymarket. A conversão clássico→catálogo é feita no Anymarket (tipo de anúncio = Catálogo).</div>
+    <div id="catKpis" class="matgrid"></div>
+    <div class="bar">
+      <input id="qcat" placeholder="Buscar referência/descrição…" style="min-width:180px">
+      <span class="tag on" data-fcat="todos">Todos</span>
+      <span class="tag" data-fcat="classico">Tem clássico (converter)</span>
+      <span class="tag" data-fcat="ausente">Nitron ausente do catálogo</span>
+      <span class="tag" data-fcat="perdendo">Concorrente ganhando</span>
+      <span class="tag" data-fcat="semean">Sem EAN</span>
+      <span class="tag" data-fcat="semestoque">⛔ Sem estoque CD</span>
+      <button class="btn ghost" id="xlCat">Copiar p/ Excel</button>
+      <span class="cnt" id="cntCat"></span>
+    </div>
+    <div class="tablewrap"><table id="tCat"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- CONFLITOS -->
+  <div id="conflitos" class="hide">
+    <div class="note"><b>1 anúncio ML ↔ 2+ cores no Anymarket.</b> No Mercado Livre o anúncio tem <b>um só preço</b>, mas no Anymarket cada cor (oferta) tem o seu — quando divergem, cada reprecificação "puxa" o anúncio para um lado. Resolver = <b>alinhar todas as cores no mesmo preço</b>. Proposta padrão: o <b>preço que está no ML hoje</b> (o cliente não vê mudança) — se ele estiver abaixo do break-even, usa o <b>preço-alvo</b>. Você pode editar cada preço antes de aplicar.</div>
+    <div id="confKpis" class="matgrid"></div>
+    <div class="bar">
+      <input id="qconf" placeholder="Buscar anúncio/ref/título…" style="min-width:200px">
+      <span class="tag on" data-fconf="diverg">Só com preços divergentes</span>
+      <span class="tag" data-fconf="todos">Todos</span>
+      <span class="tag" data-fconf="abaixo_be">Proposta abaixo do break-even</span>
+      <input type="password" id="confPw" placeholder="senha" style="width:90px">
+      <button class="btn" id="confAplicar">Alinhar selecionados</button>
+      <button class="btn ghost" id="xlConf">Copiar p/ Excel</button>
+      <span class="cnt" id="cntConf"></span>
+    </div>
+    <div id="confMsg" style="font-size:12px;margin:-4px 0 8px"></div>
+    <div class="tablewrap"><table id="tConf"><thead></thead><tbody></tbody></table></div>
+    <h3 style="font-size:14px;margin:18px 0 8px">Recusados pelo PUT de preço ("Manual por SKU" / "Automático pelo custo")</h3>
+    <div class="note">O Anymarket só aceita preço <b>por canal</b> (PUT em massa) quando o produto está no modo <b>"por SKU e marketplace"</b> (<code>SKU_MARKETPLACE</code>). Estes produtos estão em <b>Manual por SKU</b> (<code>SKU</code> — um preço único p/ todos os canais) ou <b>Automático pelo custo</b> (<code>COST</code>). A correção é <b>converter o produto</b> para "por SKU e marketplace": os preços atuais das ofertas ficam como estão e o <b>Aprovar preço</b> volta a funcionar canal a canal.</div>
+    <div class="tablewrap" style="max-height:none"><table id="tManual"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <!-- REGRAS DE TAXAS -->
+  <div id="taxas" class="hide">
+    <div class="note">Regras de taxa que entram no cálculo de preço de cada plataforma. <b>Mercado Livre</b> vem <b>real da API por anúncio</b> — é só a <b>comissão</b> do tipo (clássico ~11,5–12% · premium ~16,5–17%); <b>verificado em pedidos reais: o ML não cobra custo fixo de itens &lt; R$79</b> nesta conta. <b>Shopee</b> usa a tabela por faixa abaixo. As demais plataformas do Anymarket ficam listadas para cadastrar a regra quando você ativar.</div>
+    <div id="taxasBody"></div>
+  </div>
+</div>
+
+<script>
+let D=null, AL={};
+const FN="https://bwbeieumxcuomtrvlqxs.supabase.co/functions/v1";
+const SECRET="nitron-radar-9f4c2a";
+const ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YmVpZXVteGN1b210cnZscXhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwMzU2NjEsImV4cCI6MjEwMTYxMTY2MX0.r7zk6EdIxpDYkzjKNCUlzvipVFi-CZPYfoMZXXA9q0g";
+const HJ={"Authorization":"Bearer "+ANON,"Content-Type":"application/json"};
+const EMB_DEF=3, NET=0.7275;
+const BRL=n=>n==null||isNaN(n)?"—":Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const PCT=n=>n==null||isNaN(n)?"—":(Number(n)*100).toFixed(1)+"%";
+const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mgCls=m=>m==null?"":m>=0.2?"mok":m>=0.08?"mwarn":"mbad";
+const norm=s=>(s==null?"":s.toString()).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[.\s\/_\-]/g,"");
+const stNorm=s=>{if(!s)return"";const l=(""+s).toLowerCase();return (l==="active"||l==="ativo"||l.startsWith("ativo -"))?"ativo":l.includes("paus")?"pausado":(l.includes("review")||l.includes("revis"))?"revisao":(l.includes("estoque"))?"semestoque":(l.includes("banid")||l.includes("banned"))?"banido":(l.includes("exclu")||l.includes("delet")||l==="closed")?"excluido":(l.includes("não publicado")||l.includes("unpublished"))?"naopub":"outro";};
+const estBadge=d=>{if(d==null)return '<span class="no">—</span>';d=Math.round(+d);if(d<=0)return '<span class="pill p-bad">⛔ sem estoque</span>';if(d<200)return '<span class="pill p-warn">'+d+'</span>';return '<span class="num">'+d+'</span>';};
+const stPill=s=>{const n=stNorm(s);if(!s)return '<span class="no">—</span>';if(n==="ativo")return '<span class="pill" style="background:rgba(47,184,107,.18);color:var(--ok)">● ativo</span>';if(n==="pausado")return '<span class="pill" style="background:rgba(224,166,59,.20);color:var(--warn)">⏸ pausado</span>';if(n==="revisao")return '<span class="pill p-mut">🔎 revisão</span>';if(n==="semestoque")return '<span class="pill p-mut">sem estoque</span>';if(n==="banido")return '<span class="pill" style="background:rgba(248,81,73,.18);color:var(--bad)">⛔ banido</span>';if(n==="excluido")return '<span class="pill" style="background:rgba(248,81,73,.12);color:var(--bad)">✖ excluído</span>';if(n==="naopub")return '<span class="pill p-mut">não publicado</span>';return '<span class="pill p-mut">'+esc(s)+'</span>';};
+const platNome=code=>{const p=(D.plataformas||[]).find(x=>x.code===code);return p?p.nome:code;};
+const platShort=p=>p==="ML"||p==="MERCADO_LIVRE"?"ML":p==="Shopee"||p==="SHOPEE"?"Shopee":p==="TIKTOK_SHOP"?"TikTok":platNome(p);
+const platCls=p=>/ML|MERCADO/.test(p)?"pl-ML":/SH|SHOPEE/i.test(p)?"pl-SH":/TT|TIKTOK/i.test(p)?"pl-TT":"";
+const empCls=e=>/mundo/i.test(e)?"be-mud":"be-nit";
+const anyLink=pid=>pid?`https://app.anymarket.com.br/app-js/products/edit/${pid}`:null;
+const shopeeUrl=(sid,iid)=>(sid&&iid)?`https://shopee.com.br/product/${sid}/${iid}`:null;
+function realItemCards(sr,plat){sr=sr||{};const cls=plat==='ML'?'mk-ML':'mk-SH';const nome=plat==='ML'?'ML':'Shopee';return Object.keys(sr).map(loja=>{const o=sr[loja]||{};const its=o.itens||[];const links=its.length?its.map((it,i)=>`<a class="lnk" href="${esc(it.url)}" target="_blank" rel="noopener">ver${its.length>1?' '+BRL(it.preco):''} ↗</a>`).join(""):(o.url?`<a class="lnk" href="${esc(o.url)}" target="_blank" rel="noopener">ver ↗</a>`:'<span class="emp" style="font-size:10px">loja não conectada — sem link público</span>');return `<div class="detcard" style="border-color:rgba(227,133,59,.4)"><h5 class="${cls}">${nome} · ${esc(loja)} <span class="pill" style="font-size:9px;background:rgba(227,133,59,.18);color:var(--con)">anúncio VIVO na loja</span></h5><div class="num" style="font-weight:800;font-size:16px">${BRL(o.preco)}</div><div style="font-size:11px;color:var(--mut)">${its.length||1} anúncio(s) vivo(s) na loja ${esc(loja)}</div><div class="links">${links}</div></div>`;}).join("");}
+function shopeeRealCards(sr){return realItemCards(sr,'Shopee');}
+// detecta divergencia: anuncio vivo numa loja que nao bate com a conta publicada no Anymarket
+function divergBanner(x){const msgs=[];const any=x.any_canais||{};
+  ['SHOPEE','MERCADO_LIVRE'].forEach(mp=>{const real=mp==='SHOPEE'?(x.shopee_real||{}):(x.ml_real||{});const anyLojas=Object.keys(any).filter(k=>k.split('|')[0]===mp).map(k=>k.split('|')[1]);
+    Object.keys(real).forEach(loja=>{ if(!anyLojas.includes(loja)){ const outra=anyLojas.length?('publicado no Anymarket pela conta '+anyLojas.join('/')) : 'fora do Anymarket (fora do hub)'; msgs.push(`${platShort(mp)} <b>${esc(loja)}</b> tem anúncio VIVO na loja, mas está ${outra} — re-vincular no Anymarket.`);}});});
+  return msgs.length?`<div class="detcard" style="min-width:100%;background:rgba(227,133,59,.1);border-color:var(--con)"><h5 style="color:var(--con)">⚠ Divergência de vínculo</h5>${msgs.map(m=>`<div style="font-size:12px;margin:2px 0">${m}</div>`).join("")}</div>`:'';}
+const mlEdit=lid=>lid?`https://www.mercadolivre.com.br/anuncios/${lid}/modificar`:null;
+function copyExcel(headers,rows,btn){
+  const tsv=[headers.join("\t"),...rows.map(r=>r.map(c=>(c==null?"":String(c)).replace(/\t|\n/g," ")).join("\t"))].join("\n");
+  const t=btn.textContent;const done=()=>{btn.textContent="✓ copiado — cole no Excel";setTimeout(()=>btn.textContent=t,2500);};
+  try{navigator.clipboard.writeText(tsv).then(done,()=>fb(tsv,done));}catch(e){fb(tsv,done);}
+}
+function fb(tsv,done){const ta=document.createElement("textarea");ta.value=tsv;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}ta.remove();}
+
+/* ===== config / cálculo por plataforma ===== */
+function cfgOf(loja,plat){return (D.config||[]).find(x=>x.loja===loja&&x.plataforma===plat)||{imposto_pct:plat==='ML'&&loja==='Nitron'?0.2725:loja==='Nitron'?0.2725:0.08,embalagem:3,margem_alvo:0.2,custo_liquido:loja==='Nitron',regime:loja==='Nitron'?'Lucro Real':'Simples Nacional'};}
+function shBand(preco){const b=(D.taxa_shopee||[]).find(t=>preco>=+t.valor_min&&preco<=+t.valor_max);return b||(D.taxa_shopee||[]).slice(-1)[0]||{comissao_pct:14,taxa_fixa:26};}
+function mlFixo(preco){const T=D.taxa_ml||[{valor_min:0,valor_max:78.99,custo_fixo:6.5},{valor_min:79,valor_max:9e9,custo_fixo:0}];const b=T.find(t=>preco>=+t.valor_min&&preco<=+t.valor_max);return b?+b.custo_fixo:0;}
+function custoLoja(custo_final,loja,plat){const cf=cfgOf(loja,plat);return cf.custo_liquido?(custo_final||0)*NET:(custo_final||0);}
+// memória de cálculo unificada
+// cálculo correto: custo ENTRA CHEIO (tabela Sankhya). Lucro Real credita a entrada => imposto só sobre (venda-custo). Simples: imposto sobre a venda. % sempre sobre o PREÇO FINAL.
+function memoria(row){
+  const cf=cfgOf(row.empresa,row.plat); const imp=+cf.imposto_pct, emb=+cf.embalagem, malvo=+cf.margem_alvo, credita=!!cf.custo_liquido;
+  const P=+row.preco||0; const Cbase=(row.custo_final!=null&&+row.custo_final>0)?+row.custo_final:(+row.custo||0);
+  const credito = credita ? Cbase*imp : 0;            // crédito na entrada (Lucro Real)
+  const NET = Cbase - credito;                         // custo líquido que ENTRA
+  const isSh=/SH|SHOPEE/i.test(row.plat);
+  let com_pct, fixa, comValor;
+  if(isSh){const b=shBand(P); com_pct=+b.comissao_pct/100; fixa=+b.taxa_fixa; comValor=P*com_pct;}
+  else {const feeReal=+row.fee||0; com_pct=P>0?feeReal/P:0.13; fixa=0; comValor=feeReal;}  // ML: taxa REAL do anúncio (da API) = efetiva; já inclui custo fixo de itens <R$79
+  const feeTot=comValor+fixa; const frete=+row.frete||0;
+  const imposto = imp*P;                               // imposto de SAÍDA sobre a venda
+  const lucro = P - NET - feeTot - frete - emb - imposto;
+  const margem = P>0?lucro/P:null;
+  const base = NET + fixa + frete + emb;               // reverso: P(1-com-imp)=base
+  const be = (1-com_pct-imp)>0 ? base/(1-com_pct-imp) : null;
+  const alvo = (1-com_pct-imp-malvo)>0 ? base/(1-com_pct-imp-malvo) : null;
+  return {regime:cf.regime,imp,emb,malvo,credita,isSh,P,Cbase,credito,NET,com_pct,comValor,fixa,feeTot,frete,imposto,lucro,margem,be,alvo};
+}
+function taxExplain(plat,preco){
+  if(/ML|MERCADO/.test(plat)) return "ML: comissão por tipo de anúncio (clássico ~11,5–12%, premium ~16,5–17% nesta categoria), REAL da API por anúncio. Verificado em pedidos reais pagos: o ML NÃO cobra o custo fixo de itens < R$79 nesta conta — a taxa cobrada é só a comissão %.";
+  if(/SH|SHOPEE/i.test(plat)){const b=shBand(preco||0);return `Shopee: taxa total = comissão ${b.comissao_pct}% sobre o preço + taxa fixa R$ ${(+b.taxa_fixa).toFixed(0)} por pedido (faixa R$ ${(+b.valor_min).toFixed(0)}–${(+b.valor_max).toFixed(0)}). Até R$ 79,99 a comissão é 20%; acima, 14%.`;}
+  return "Cálculo a configurar (cadastrar regra de taxa na aba Regras de Taxas).";
+}
+function memoriaHtml(row){
+  const m=memoria(row);
+  const custoLines=m.credita
+    ?`<div class="calcline"><span class="l">Custo tabela Sankhya (cheio)</span><span class="v">${BRL(m.Cbase)}</span></div>
+      <div class="calcline"><span class="l">− Crédito na entrada (${PCT(m.imp)})</span><span class="v" style="color:var(--ok)">− ${BRL(m.credito)}</span></div>
+      <div class="calcline"><span class="l">= Custo líquido NET (é este que entra)</span><span class="v">${BRL(m.NET)}</span></div>`
+    :`<div class="calcline"><span class="l">Custo tabela Sankhya (cheio — Simples não credita)</span><span class="v">${BRL(m.NET)}</span></div>`;
+  const comLines=m.isSh
+    ?`<div class="calcline"><span class="l">− Comissão Shopee ${PCT(m.com_pct)} sobre o preço</span><span class="v">− ${BRL(m.comValor)}</span></div>
+      <div class="calcline"><span class="l">− Taxa fixa Shopee (por faixa)</span><span class="v">− ${BRL(m.fixa)}</span></div>
+      <div class="calcline"><span class="l" style="font-style:italic">= Taxa Shopee total (comissão + fixa)</span><span class="v">− ${BRL(m.feeTot)}</span></div>`
+    :`<div class="calcline"><span class="l">− Taxa ML real deste anúncio (${PCT(m.com_pct)} — ${row.fee_fonte==='venda'?('taxa REAL paga em '+row.fee_un+' venda(s)'):'comissão da categoria, da API'})</span><span class="v">− ${BRL(m.feeTot)}</span></div>
+      <div class="calcline"><span class="l" style="font-size:11px;color:var(--mut)">${row.fee_fonte==='venda'?'✓ taxa que o ML <b>de fato cobrou</b> neste produto (marketplaceFee do Anymarket)':'sem vendas recentes p/ taxa real; usando a comissão da API. '}<b>sem custo fixo de itens &lt; R$79</b> nesta conta</span><span class="v"></span></div>`;
+  return `${custoLines}
+    <div class="calcline" style="margin-top:4px"><span class="l">Preço anunciado</span><span class="v">${BRL(m.P)}</span></div>
+    ${comLines}
+    <div class="calcline"><span class="l">− Frete ${row.plat==='ML'?(row.free?'(grátis p/ vendedor)':'(comprador paga)'):'(def. 0 — ajustável)'}</span><span class="v">− ${BRL(m.frete)}</span></div>
+    <div class="calcline"><span class="l">− Imposto de saída ${esc(m.regime)} ${PCT(m.imp)} sobre o preço</span><span class="v">− ${BRL(m.imposto)}</span></div>
+    <div class="calcline"><span class="l">− Embalagem</span><span class="v">− ${BRL(m.emb)}</span></div>
+    <div class="calcline tot"><span class="l">= Lucro / Margem</span><span class="v ${mgCls(m.margem)}">${BRL(m.lucro)} · ${PCT(m.margem)}</span></div>
+    <div class="calcline"><span class="l">Break-even (margem 0)</span><span class="v">${BRL(m.be)}</span></div>
+    <div class="calcline"><span class="l">Preço-alvo (margem ${PCT(m.malvo)})</span><span class="v">${BRL(m.alvo)}</span></div>
+    <div style="font-size:11px;color:var(--mut);margin-top:6px;border-top:1px dashed var(--bd);padding-top:6px">ℹ️ ${taxExplain(row.plat,m.P)}</div>`;
+}
+function margemEm(row,price){const cf=cfgOf(row.empresa,row.plat);const imp=+cf.imposto_pct,emb=+cf.embalagem,credita=!!cf.custo_liquido;const Cb=(row.custo_final!=null&&+row.custo_final>0)?+row.custo_final:(+row.custo||0);const NET=credita?Cb*(1-imp):Cb;let com,fixa;if(/SH|SHOPEE/i.test(row.plat)){const b=shBand(price);com=+b.comissao_pct/100;fixa=+b.taxa_fixa;}else{const fc0=mlFixo(row.preco||0);com=(row.preco>0?Math.max(0,(+row.fee||0)-fc0)/+row.preco:0.13);fixa=mlFixo(price);}const fee=price*com+fixa;const frete=+row.frete||0;const imposto=imp*price;const lucro=price-NET-fee-frete-emb-imposto;return price>0?lucro/price:null;}
+// Especialista embarcado (regras de marketplace/precificação/estratégia)
+function especialista(row){
+  const m=memoria(row);const tips=[];
+  if(m.Cbase<=0) tips.push(["warn","Sem custo na tabela Sankhya — defina o custo manual abaixo (item fora da tabela / kit montado no Anymarket) para o cálculo valer."]);
+  if(m.margem!=null&&m.margem<0) tips.push(["bad",`No prejuízo (margem ${PCT(m.margem)}). Subir para ≥ break-even ${BRL(m.be)} ou rever custo.`]);
+  else if(m.margem!=null&&m.margem<m.malvo) tips.push(["warn",`Margem ${PCT(m.margem)} abaixo do alvo ${PCT(m.malvo)}. Preço-alvo = ${BRL(m.alvo)}.`]);
+  if(m.P>0&&m.P<40){const fixo=m.isSh?m.fixa:6.5;const peso=fixo/m.P;if(peso>0.12) tips.push(["ac",`Item barato: a taxa fixa (~${BRL(fixo)}) pesa ${PCT(peso)} do preço. Vender em KIT (2–4 un) dilui a taxa fixa e o frete e eleva o ticket — melhor margem.`]);}
+  if(!m.isSh && m.P>0 && m.P<79 && m.fixa>0){const mgAcima=margemEm(row,79.01);const ganho=(mgAcima!=null&&m.margem!=null)?(mgAcima-m.margem):null;tips.push(["ac",`Piso R$79 do ML: abaixo disso paga-se o custo fixo ${BRL(m.fixa)}. A partir de R$79,01 esse custo zera → margem iria a ${PCT(mgAcima)}${ganho!=null&&ganho>0.03?` (+${PCT(ganho)})`:''}. Avalie subir acima de R$79 ou montar KIT (2+ un) para cruzar o piso.`]);}
+  const conc=row.conc;
+  if(conc&&conc.ofertas){
+    if(m.P>conc.max){const dif=(m.P-conc.min)/m.P;tips.push(["warn",`Acima do mercado: menor concorrente ${BRL(conc.min)} (nós ${BRL(m.P)}, +${PCT(dif)}). Equiparar ao menor → margem iria a ${PCT(margemEm(row,conc.min))}.`]);}
+    else if(m.P<conc.min) tips.push(["ok",`Abaixo de todos (menor conc. ${BRL(conc.min)}). Dá para subir até ~${BRL(conc.min)} ganhando margem sem perder competitividade.`]);
+    else tips.push(["ac",`Dentro da faixa (${BRL(conc.min)}–${BRL(conc.max)}). Mirar logo abaixo do 2º menor pega destaque sem destruir margem.`]);
+    if(conc.ofertas>=8) tips.push(["ac",`Alta concorrência (${conc.ofertas} ofertas) — diferencie por variação/kit/frete; só preço corrói margem.`]);
+  } else tips.push(["ok","Baixa/nenhuma concorrência monitorada — oportunidade de margem maior ou preço premium aqui."]);
+  const cmap={bad:"var(--bad)",warn:"var(--warn)",ok:"var(--ok)",ac:"var(--ac)"};
+  return `<div class="detcard" style="min-width:290px;max-width:380px"><h5 style="color:var(--ac)">🧠 Especialista${row.linha?' · '+esc(row.linha):''}</h5>${tips.map(t=>`<div style="font-size:12px;margin:5px 0;color:${cmap[t[0]]}">▸ <span style="color:var(--tx)">${t[1]}</span></div>`).join("")||'<div class="emp">sem recomendações</div>'}</div>`;
+}
+
+/* ===== STATS ===== */
+function stat(l,v,cls){return `<div class="stat ${cls||''}"><div class="l">${esc(l)}</div><b class="num">${v}</b></div>`;}
+function renderStats(){
+  const R=D.resumo;
+  document.getElementById("stamp").textContent="Snapshot "+new Date(D.gerado_em).toLocaleString("pt-BR");
+  document.getElementById("stats").innerHTML=[
+    stat("Anúncios precificáveis",PR.length),stat("Na Tabela Sankhya",R.na_155),stat("No Anymarket",R.no_any),
+    stat("Prejuízo ativos",PR.filter(r=>{const mg=memoria(r).margem;return mg!=null&&mg<0&&stNorm(r.st)==="ativo";}).length,"bad"),stat("Prejuízo pausados",PR.filter(r=>{const mg=memoria(r).margem;return mg!=null&&mg<0&&stNorm(r.st)==="pausado";}).length),
+  ].join("");
+  const cf=D.criar.filter(x=>x.tem_foto).length, cc=D.criar.filter(x=>x.tem_cat).length;
+  document.getElementById("criarStats").innerHTML=[stat("Candidatos",D.criar.length),stat("Com foto",cf),stat("Com categoria",cc)].join("");
+  const rc=D.revendedores.filter(x=>x.cnpj_digitos).length;
+  document.getElementById("revStats").innerHTML=[stat("Revendedores",D.revendedores.length),stat("Com CNPJ",rc),stat("Total anúncios deles",D.revendedores.reduce((a,b)=>a+(b.n_anuncios||0),0))].join("");
+}
+
+/* ===== linhas de precificação (ML + Shopee) ===== */
+let PR=[];
+function buildPR(){
+  PR=[];
+  D.grupos.forEach(g=>{
+    (g.nitron||[]).forEach(a=>PR.push(mlRow(g,a,'Nitron')));
+    (g.mundoud||[]).forEach(a=>PR.push(mlRow(g,a,'Mundo UD')));
+    const shCh=(g.canais||[]).filter(c=>c.marketplace==='SHOPEE');
+    const cov=new Set(shCh.map(c=>c.empresa||(/mundo/i.test(c.conta||'')?'Mundo UD':'Nitron')));
+    shCh.forEach(c=>PR.push(shRow(g,c)));
+    const sr=g.shopee_real||{};
+    Object.keys(sr).forEach(loja=>{if(!cov.has(loja))PR.push(shRow(g,{empresa:loja,conta:loja,marketplace:'SHOPEE',preco:sr[loja].preco,oid:null,st:(sr[loja].st||'Ativo'),st_real:(sr[loja].st||null),link:sr[loja].url,titulo:g.descr}));});
+  });
+}
+function mlRow(g,a,emp){const imp=emp==='Nitron'?0.2725:0.08;
+  const tr=(D.taxa_real&&D.taxa_real[g.ref]&&D.taxa_real[g.ref][emp]);
+  const feeVal=(tr&&+a.preco>0)?(+a.preco*+tr.pct):a.fee;
+  return {ref:g.ref,descr:g.descr,linha:g.linha,marca:g.marca,empresa:emp,plat:'ML',foto:g.foto,titulo:a.titulo,preco:a.preco,custo:a.custo,fee:feeVal,fee_fonte:tr?'venda':'api',fee_un:tr?tr.un:0,frete:a.frete,free:a.free,imposto:(a.preco||0)*imp,margem:a.margem,be:a.be,alvo:a.alvo,oid:a.oid,oids:a.oids||null,st:a.st,link:a.link,lid:a.lid,product_id:g.product_id,custo_final:g.custo_final,is_kit:g.is_kit,na_155:g.na_155,conc:g.conc,estoque:g.estoque,reservado:g.reservado,disp:((+g.estoque||0)-(+g.reservado||0)),est_nit:g.est_nit,est_ext:g.est_ext};}
+function shRow(g,c){const emp=c.empresa||(/mundo/i.test(c.conta)?'Mundo UD':'Nitron');const custo=custoLoja(g.custo_final,emp,'Shopee');const cf=cfgOf(emp,'Shopee');const imp=+cf.imposto_pct,emb=+cf.embalagem,malvo=+cf.margem_alvo;const b=shBand(+c.preco||0),com=+b.comissao_pct/100,fixa=+b.taxa_fixa;const fee=(+c.preco||0)*com+fixa;const be=(custo+emb+fixa)/(1-com-imp);const alvo=(custo+emb+fixa)/(1-com-imp-malvo);const lucro=(+c.preco||0)-custo-fee-(c.preco*imp)-emb;const margem=c.preco>0?lucro/c.preco:null;return {ref:g.ref,descr:g.descr,linha:g.linha,marca:g.marca,empresa:emp,plat:'Shopee',foto:g.foto,titulo:c.titulo||g.descr,preco:((g.shopee_real&&g.shopee_real[emp]&&+g.shopee_real[emp].preco)||c.preco),preco_real:(g.shopee_real&&g.shopee_real[emp]?+g.shopee_real[emp].preco:null),preco_any:c.preco,custo,fee,frete:0,imposto:(+c.preco||0)*imp,margem,be,alvo,oid:c.oid,st:(c.st||c.status||'Ativo'),st_any:c.st_any,st_real:c.st_real,link:((g.shopee_real&&g.shopee_real[emp]&&g.shopee_real[emp].url)||c.link),product_id:g.product_id,custo_final:g.custo_final,is_kit:g.is_kit,na_155:g.na_155,conc:g.conc,estoque:g.estoque,reservado:g.reservado,disp:((+g.estoque||0)-(+g.reservado||0)),est_nit:g.est_nit,est_ext:g.est_ext};}
+
+let fP="todos", spK="", spD=-1, colF={empresa:"",plat:"",st:""};
+function prFiltered(){
+  const nq=norm(document.getElementById("q").value);
+  const linha=document.getElementById("pLinha").value;
+  return PR.filter(r=>{
+    if(colF.empresa && r.empresa!==colF.empresa) return false;
+    if(colF.plat && r.plat!==colF.plat) return false;
+    if(colF.st && stNorm(r.st)!==colF.st) return false;
+    if(linha && r.linha!==linha) return false;
+    if(nq && !(norm(r.ref).includes(nq)||norm(r.descr).includes(nq)||norm(r.titulo).includes(nq))) return false;
+    if(fP==="semcusto") return !(+r.custo_final>0);
+    if(fP==="foratab") return !r.na_155;
+    if(fP==="kit") return r.is_kit;
+    if(fP==="ativos") return stNorm(r.st)==="ativo";
+    if(fP==="pausados") return stNorm(r.st)==="pausado";
+    if(fP==="semestoque") return r.disp!=null && r.disp<=0;
+    if(fP==="frete79") return r.plat==='ML' && r.free===true && +r.preco<79;
+    if(fP==="cores") return !!(r.oids&&r.oids.length>1);
+    if(fP==="prejuizo"||fP==="m0_10"||fP==="m10_20"||fP==="mge20"||fP==="p79"){
+      const m=memoria(r), mg=m.margem;
+      if(fP==="prejuizo") return mg!=null&&mg<0;
+      if(fP==="m0_10") return mg!=null&&mg>=0&&mg<0.10;
+      if(fP==="m10_20") return mg!=null&&mg>=0.10&&mg<0.20;
+      if(fP==="mge20") return mg!=null&&mg>=0.20;
+      if(fP==="p79") return m.P>=79 && m.frete>0;
+    }
+    return true;
+  });
+}
+const SPK={preco:r=>r.m.P,net:r=>r.m.NET,taxa:r=>r.m.feeTot,imposto:r=>r.m.imposto,frete:r=>r.m.frete,margem:r=>r.m.margem,alvo:r=>r.m.alvo,disp:r=>r.r.disp,q30:r=>r.q30,r30:r=>r.r30,l30:r=>r.l30,ref:r=>r.r.ref,empresa:r=>r.r.empresa,st:r=>stNorm(r.r.st)};
+// filtro dropdown no cabeçalho (genérico) — HF[tabela][coluna]=valor; redesenha via HFDRAW[tabela]
+const HF={conc:{},rev:{},cat:{},conf:{},criar:{}}; const HFDRAW={};
+function hdrSel(tbl,col,opts){const cur=(HF[tbl]||{})[col]||"";const o='<option value="">(todos)</option>'+opts.map(([v,l])=>`<option value="${esc(v)}"${String(v)===cur?' selected':''}>${esc(l)}</option>`).join('');return `<div class="colfw"><select class="colf" data-tbl="${tbl}" data-col="${esc(col)}" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">${o}</select></div>`;}
+const uniqOpts=(arr)=>[...new Set(arr.filter(v=>v!=null&&v!==''))].sort((a,b)=>String(a).localeCompare(String(b))).map(v=>[v,v]);
+const SIMNAO=[['sim','sim'],['nao','não']];
+const estFx=d=>d==null?'semdado':d<=0?'sem':d<200?'baixo':'ok';
+const EST_OPTS=[['ok','≥200'],['baixo','1–199'],['sem','⛔ sem estoque'],['semdado','sem dado']];
+document.addEventListener("change",e=>{const s=e.target.closest("select.colf[data-tbl]");if(!s)return;HF[s.dataset.tbl][s.dataset.col]=s.value;(HFDRAW[s.dataset.tbl]||(()=>{}))();});
+function colSel(col){
+  let opts,cur=colF[col]||"";
+  if(col==='empresa')opts=[...new Set(PR.map(r=>r.empresa))].filter(Boolean).sort().map(x=>[x,x]);
+  else if(col==='plat')opts=[['ML','ML'],['Shopee','Shopee']];
+  else if(col==='st')opts=[['ativo','● ativo'],['pausado','⏸ pausado'],['revisao','🔎 revisão'],['semestoque','sem estoque'],['banido','⛔ banido'],['excluido','✖ excluído'],['naopub','não publicado']];
+  else return '';
+  const o='<option value="">(todos)</option>'+opts.map(([v,l])=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(l)}</option>`).join('');
+  return `<div class="colfw"><select class="colf" data-col="${col}" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">${o}</select></div>`;
+}
+function prHead(){
+  const cols=[["ref","Ref","",""],["empresa","Empresa","","empresa"],["","Plataforma","","plat"],["st","Status","","st"],["","Título","",""],["preco","Preço","r",""],["net","Custo líq.","r",""],["taxa","Taxa","r",""],["imposto","Imposto","r",""],["frete","Frete","r",""],["margem","Margem","r",""],["alvo","Alvo","r",""],["disp","Estoque CD","r",""],["q30","Vendas 30d","r",""],["r30","Fat. 30d","r",""],["l30","Lucro 30d","r",""]];
+  return '<tr>'+cols.map(([k,l,al,fc])=>{const a=k&&k===spK?` <span class="arr">${spD<0?'▼':'▲'}</span>`:'';return `<th class="${al?'r ':''}${k?'sortable':''}" ${k?`data-sk="${k}"`:''}>${l}${a}${fc?colSel(fc):''}</th>`;}).join('')+'</tr>';
+}
+function drawPrec(){
+  const rows=prFiltered();
+  let recs=rows.map(r=>{const m=memoria(r);const v=(D.vendas30&&D.vendas30[r.ref])||null;const q30=v?+v.qtd:0;const r30=v?+v.receita:0;const l30=(m.lucro!=null?m.lucro*q30:null);return {r,m,q30,r30,l30};});
+  if(spK&&SPK[spK]){const f=SPK[spK];recs.sort((a,b)=>{let va=f(a),vb=f(b);if(typeof va==='string')return spD*va.localeCompare(vb);return spD*((va==null?-1e15:va)-(vb==null?-1e15:vb));});}
+  document.getElementById("cnt").textContent=rows.length+" de "+PR.length+" anúncios";
+  document.querySelector("#tP thead").innerHTML=prHead();
+  document.querySelector("#tP tbody").innerHTML=recs.slice(0,500).map(({r,m,q30,r30,l30})=>{return `
+    <tr class="click">
+      <td class="num" style="white-space:nowrap">${fotoImg(r.foto,30)} ${esc(r.ref)}${r.is_kit?' <span class="pill pkit">KIT</span>':''}</td>
+      <td><span class="badge-emp ${empCls(r.empresa)}">${esc(r.empresa)}</span></td>
+      <td><span class="badge-plat ${platCls(r.plat)}">${platShort(r.plat)}</span></td>
+      <td>${stPill(r.st)}${r.st_any&&stNorm(r.st_any)!==stNorm(r.st)?` <span class="pill p-mut" title="Anymarket diz: ${esc(r.st_any)} — status mostrado é o REAL da loja Shopee">≠ hub</span>`:''}${r.plat==='ML'&&r.free&&+r.preco<79?' <span class="pill pkit" title="frete grátis ligado abaixo de R$79 — pode desligar">🚚</span>':''}${r.oids&&r.oids.length>1?` <span class="pill" style="background:rgba(227,133,59,.18);color:var(--con)" title="anúncio ML com ${r.oids.length} ofertas/cores no Anymarket">${r.oids.length} cores</span>`:''}</td>
+      <td class="ti" title="${esc(r.titulo)}">${esc(r.titulo||"")}</td>
+      <td class="r num" style="font-weight:700">${BRL(m.P)}</td>
+      <td class="r num">${BRL(m.NET)}</td>
+      <td class="r num">${BRL(m.feeTot)}</td>
+      <td class="r num">${BRL(m.imposto)}</td>
+      <td class="r num">${BRL(m.frete)}</td>
+      <td class="r mg ${mgCls(m.margem)}">${PCT(m.margem)}</td>
+      <td class="r num">${BRL(m.alvo)}</td>
+      <td class="r" title="físico ${Math.round(+r.estoque||0)} · reservado ${Math.round(+r.reservado||0)} (CD Sankhya: Filial+Extrema)">${estBadge(r.disp)}</td>
+      <td class="r num">${q30?Math.round(q30):'<span class="no">—</span>'}</td>
+      <td class="r num">${r30?BRL(r30):'<span class="no">—</span>'}</td>
+      <td class="r num ${l30!=null&&l30<0?'mbad':l30>0?'mok':''}">${l30!=null&&q30?BRL(l30):'<span class="no">—</span>'}</td>
+    </tr>
+    <tr class="detrow" hidden><td colspan="16">${precDetail(r)}</td></tr>`;}).join("")||'<tr><td colspan="16" class="emp">Nada encontrado.</td></tr>';
+  if(rows.length>500) document.querySelector("#tP tbody").innerHTML+='<tr><td colspan="16" class="note">Mostrando 500 — refine a busca/filtros.</td></tr>';
+  window._prRows=rows;
+}
+const fotoImg=(url,sz)=>url?`<img src="${esc(url)}" alt="" style="width:${sz||40}px;height:${sz||40}px;object-fit:contain;background:#fff;border-radius:6px;vertical-align:middle">`:'';
+function fotoCard(g){const u=g.foto;return u?`<div class="detcard" style="min-width:150px;text-align:center"><img src="${esc(u)}" loading="lazy" alt="" style="width:140px;height:140px;object-fit:contain;background:#fff;border-radius:8px"><div class="ti" style="font-size:11px;margin-top:4px;max-width:140px">${esc(g.descr||g.ref)}</div></div>`:'';}
+// frete grátis ML: só dá p/ desligar abaixo de R$79 (acima o ML obriga). Verifica AO VIVO antes; grava via ml-frete (senha).
+function freteBox(r){
+  const eleg=r.free===true&&+r.preco<79;
+  return `<div class="fretebox" data-lid="${esc(r.lid)}" style="margin-top:8px;border-top:1px dashed var(--bd);padding-top:7px;font-size:12px">
+    <span style="color:var(--mut)">🚚 Frete: ${r.free===true?'<b>grátis (vendedor paga)</b>':r.free===false?'comprador paga':'—'}${+r.preco>=79?' · ≥R$79: ML obriga grátis':''}</span>
+    <button class="btn ghost freteVer" style="margin-left:6px">verificar ao vivo</button>
+    ${eleg?`<div class="simrow"><input type="password" class="pwFrete" placeholder="senha" style="width:84px"><button class="btn freteOff" style="background:var(--con)">Desligar frete grátis</button></div>`:''}
+    <div class="freteMsg" style="font-size:11px;color:var(--mut);margin-top:4px"></div></div>`;
+}
+// card de precificacao reutilizavel (memoria + simulador + aprovar) — usado na Precificacao e em Canais&Mercado
+function pricingCardHtml(r){
+  const al=anyLink(r.product_id);const cf=cfgOf(r.empresa,r.plat);const m=memoria(r);
+  return `<div class="detcard" style="min-width:300px"><h5 class="${platCls(r.plat)}">Precificação · ${platShort(r.plat)} · ${esc(r.empresa)}</h5>
+    ${memoriaHtml(r)}
+    <div class="simrow" data-plat="${r.plat}" data-fee="${+r.fee||0}" data-preco="${+r.preco||0}" data-imp="${+cf.imposto_pct}" data-emb="${+cf.embalagem}" data-credita="${cf.custo_liquido?1:0}">
+      <span style="color:var(--mut)">custo cheio</span><input type="number" class="siCusto" step="0.01" value="${m.Cbase.toFixed(2)}">
+      <span style="color:var(--mut)">frete</span><input type="number" class="siFrete" step="0.01" value="${(+r.frete||0).toFixed(2)}">
+      <span style="color:var(--mut)">margem</span><input type="number" class="siMarg" value="20" min="0" max="75">%
+      → <span class="novo num" style="font-weight:800;color:var(--ac)">${BRL(m.alvo)}</span></div>
+    <div class="links">${r.link?`<a class="lnk" href="${esc(r.link)}" target="_blank" rel="noopener">ver ↗</a>`:""}${r.lid?`<a class="lnk" href="${mlEdit(r.lid)}" target="_blank" rel="noopener">editar ↗</a>`:""}${al?`<a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:""}
+      <button class="btn aprovar" data-oid="${r.oid||''}" data-oids="${r.oids&&r.oids.length>1?esc(JSON.stringify(r.oids)):''}" data-ref="${esc(r.ref)}" data-emp="${esc(r.empresa)}" data-plat="${platShort(r.plat)}" data-alvo="${(m.alvo||0).toFixed(2)}">Aprovar preço</button></div>
+    ${r.plat==='ML'&&r.lid?freteBox(r):''}
+  </div>`;
+}
+// comparativo profundo com a concorrencia (numeros)
+function comparativoCard(g){
+  const all=(D.ofertas&&D.ofertas[g.ref])||[]; if(!all.length) return '';
+  const ofs=all.filter(o=>!o.eh_nitron);               // concorrentes
+  // ---- dono do catálogo (por menor preço do catálogo ML) ----
+  const cats={}; all.forEach(o=>{if(o.catalogo&&+o.preco>0)(cats[o.catalogo]=cats[o.catalogo]||[]).push(o);});
+  const catBlocks=Object.keys(cats).map(cid=>{
+    const arr=cats[cid].slice().sort((a,b)=>a.preco-b.preco); const dono=arr[0]; const temNitron=arr.some(o=>o.eh_nitron);
+    const tag=dono.eh_nitron?'<span class="yes">NITRON é a dona ✓</span>':(temNitron?'<span class="mg r">concorrente ganhando ⚠</span>':'<span class="mg r">catálogo de concorrente — Nitron ausente ⚠</span>');
+    return `<div class="calcline"><span class="l">Catálogo ${tag}</span><span class="v">dono: ${esc((dono.seller||'?').slice(0,16))}${dono.oficial?' ⭐':''} ${BRL(dono.preco)}</span></div>`;
+  }).filter(Boolean).join("");
+  const ps=ofs.map(o=>+o.preco).filter(x=>x>0);
+  const cMin=ps.length?Math.min(...ps):0,cMax=ps.length?Math.max(...ps):0,cMed=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0; const nSel=new Set(ofs.map(o=>o.seller)).size;
+  const cheapest=ofs.filter(o=>+o.preco===cMin)[0];
+  const nossos=(g.canais||[]).filter(ch=>+ch.preco>0);
+  const linhas=ps.length?nossos.map(ch=>{const p=+ch.preco;const dif=(p-cMin)/cMin;const pos=p<cMin?'<span class="yes">mais barato</span>':p>cMax?'<span class="mg r">acima do mercado</span>':'na faixa';const baixar=p>cMin?` · baixar ${BRL(p-cMin)} p/ igualar`:'';return `<div class="calcline"><span class="l">${esc(platShort(ch.marketplace))} · ${esc(ch.empresa||'')} ${BRL(p)}</span><span class="v">${dif>=0?'+':''}${PCT(dif)} vs menor · ${pos}${baixar}</span></div>`;}).join(""):'';
+  const top=ofs.slice(0,8).map(o=>`<div class="calcline"><span class="l">${esc((o.seller||'').slice(0,22))}${o.oficial?' ⭐':''}${o.full?' <span class="pill pkit" style="font-size:9px">FULL</span>':''}</span><span class="v">${BRL(o.preco)}${o.url?` <a class="lnk" href="${esc(o.url)}" target="_blank" rel="noopener">↗</a>`:''}</span></div>`).join("");
+  return `<div class="detcard" style="min-width:300px;max-width:440px"><h5 style="color:var(--con)">📊 Comparativo concorrência</h5>
+    ${catBlocks?`<div style="font-size:11px;color:var(--mut)">Dono do catálogo <span title="proxy: menor preço do catálogo">(por menor preço)</span></div>${catBlocks}<div style="border-top:1px dashed var(--bd);margin:6px 0"></div>`:''}
+    ${ps.length?`<div class="calcline"><span class="l">Ofertas concorrentes · sellers</span><span class="v">${ofs.length} · ${nSel}</span></div>
+    <div class="calcline"><span class="l">Menor</span><span class="v">${BRL(cMin)}${cheapest?' · '+esc((cheapest.seller||'').slice(0,16)):''}</span></div>
+    <div class="calcline"><span class="l">Médio / Maior</span><span class="v">${BRL(cMed)} / ${BRL(cMax)}</span></div>
+    <div style="border-top:1px dashed var(--bd);margin:6px 0;font-size:11px;color:var(--mut)">Nossos preços vs menor concorrente</div>${linhas}
+    <div style="border-top:1px dashed var(--bd);margin:6px 0;font-size:11px;color:var(--mut)">Ofertas concorrentes (menores primeiro)</div>${top}`:(catBlocks?'':'<div class="emp" style="font-size:11px">Sem concorrente externo.</div>')}
+  </div>`;
+}
+function precDetail(r){
+  return `<div class="detr">
+    ${fotoCard(r)}
+    ${pricingCardHtml(r)}
+    <div style="display:flex;flex-direction:column;gap:8px"><button class="btn ia" data-ref="${esc(r.ref)}" style="background:transparent;border:1px solid var(--ac);color:var(--ac)">🧠 Análise IA do anúncio</button><button class="btn img" data-ref="${esc(r.ref)}" data-titulo="${esc(r.descr||r.titulo||'')}" data-pid="${esc(r.product_id||'')}" style="background:transparent;border:1px solid var(--con);color:var(--con)">🖼️ Gerar imagem</button></div>
+    ${shopeeRealCards((D.grupos.find(g=>g.ref===r.ref)||{}).shopee_real)}
+    ${especialista(r)}
+    ${comparativoCard({ref:r.ref,canais:(D.grupos.find(g=>g.ref===r.ref)||{}).canais})}
+  </div>`;
+}
+
+/* ===== CANAIS & MERCADO (mesclado) ===== */
+let fcm="", cmSK="", cmSD=-1;
+const cmV30=ref=>(D.vendas30&&D.vendas30[ref]&&+D.vendas30[ref].qtd)||0;
+const CMSK={ref:x=>x.r.ref,empresa:x=>x.r.empresa,st:x=>stNorm(x.r.st),preco:x=>x.m.P,net:x=>x.m.NET,taxa:x=>x.m.feeTot,imposto:x=>x.m.imposto,frete:x=>x.m.frete,margem:x=>x.m.margem,alvo:x=>x.m.alvo,cmin:x=>x.r.conc?+x.r.conc.min:null,cmed:x=>x.r.conc?+x.r.conc.medio:null,vsmin:x=>x.vsmin,q30:x=>x.q30,l30:x=>x.l30};
+function alertCard(g){const a=AL[g.ref];if(!a)return '';const evs=(a.eventos||[]).slice(0,6).map(e=>`<div class="calcline"><span class="l">${esc((e.seller||'').slice(0,18))}${e.oficial?' ⭐':''} · ${new Date(e.quando).toLocaleDateString('pt-BR')}</span><span class="v">${BRL(e.old)}→<b>${BRL(e.new)}</b> <span class="mg r">${(e.pct*100).toFixed(0)}%</span> ${e.url?`<a class="lnk" href="${esc(e.url)}" target="_blank" rel="noopener">↗</a>`:''}</span></div>`).join('');return `<div class="detcard" style="border-color:var(--con);background:rgba(227,133,59,.08);min-width:270px"><h5 style="color:var(--con)">🔻 Concorrente baixou preço (7 dias)</h5>${evs}<div style="font-size:11px;color:var(--mut);margin-top:4px">Menor preço novo do concorrente: <b>${BRL(a.menor_novo)}</b> — reavalie o seu.</div></div>`;}
+function cmOurMin(g){const ps=(g.canais||[]).map(c=>+c.preco).filter(v=>v>0);return ps.length?Math.min(...ps):null;}
+function diffCell(our,ref){if(our==null||ref==null||!(+ref>0))return '<td class="r no">—</td>';const d=our-(+ref);const pct=d/(+ref);const cls=d>0.01?'mg r':d<-0.01?'yes':'';const s=d>0?'+':'';return `<td class="r num ${cls}" style="white-space:nowrap">${s}${BRL(d)}<br><span style="font-size:10px">${s}${(pct*100).toFixed(1)}%</span></td>`;}
+function canalCols(){const s={},o=[];(D.canais_disponiveis||[]).forEach(c=>{const k=c.marketplace+'|'+c.empresa;if(!s[k]){s[k]=1;o.push(c);}});return o;}
+function cmCols(){const e=document.getElementById("cmEmp").value,p=document.getElementById("cmPlat").value;return canalCols().filter(c=>(!e||c.empresa===e)&&(!p||c.marketplace===p));}
+// margens por referência (menor/pior entre os canais) — para colorir prejuízo
+function refMgMap(){const m={};PR.forEach(r=>{const mg=memoria(r).margem;if(mg!=null){if(!(r.ref in m))m[r.ref]={min:mg,max:mg};else{m[r.ref].min=Math.min(m[r.ref].min,mg);m[r.ref].max=Math.max(m[r.ref].max,mg);}}});return m;}
+const CMG={ref:(g,c)=>g.ref,margem:(g,c)=>c.mg&&c.mg[g.ref]?c.mg[g.ref].min:null,conc:(g)=>g.conc?+g.conc.min:null,vsmenor:(g)=>{const o=cmOurMin(g);return (o!=null&&g.conc&&+g.conc.min>0)?(o-+g.conc.min)/+g.conc.min:null;},vsmedia:(g)=>{const o=cmOurMin(g);return (o!=null&&g.conc&&+g.conc.medio>0)?(o-+g.conc.medio)/+g.conc.medio:null;},v30:(g)=>cmV30(g.ref),disp:(g)=>((+g.estoque||0)-(+g.reservado||0))};
+function drawCM(){
+  const q=norm(document.getElementById("qcm").value);
+  const emp=document.getElementById("cmEmp").value, plat=document.getElementById("cmPlat").value, linha=document.getElementById("cmLinha").value;
+  const cols=cmCols();
+  const RM=refMgMap();
+  const prIdx={},refSt={};PR.forEach(r=>{const mk=r.plat==='ML'?'MERCADO_LIVRE':(r.plat==='Shopee'?'SHOPEE':r.plat);const k=mk+'|'+r.empresa;(prIdx[r.ref]=prIdx[r.ref]||{});const cur=prIdx[r.ref][k];if(!cur||(+r.preco>0&&stNorm(r.st)==='ativo'))prIdx[r.ref][k]={preco:r.preco,st:r.st};(refSt[r.ref]=refSt[r.ref]||new Set()).add(stNorm(r.st));});
+  const arr=k=>k===cmSK?` <span class="arr">${cmSD<0?'▼':'▲'}</span>`:'';
+  document.querySelector("#tCM thead").innerHTML=`<tr><th class="sortable" data-sk="ref">Ref${arr('ref')}</th><th>Descrição</th><th class="r sortable" data-sk="margem" title="Pior margem entre os canais da referência">Margem${arr('margem')}</th>`+cols.map(c=>`<th class="r ${c.marketplace==='MERCADO_LIVRE'?'mk-ML':'mk-SH'}">${esc(platShort(c.marketplace))}<br><span style="font-weight:400;text-transform:none">${esc(c.empresa)}</span></th>`).join("")+`<th class="r sortable" data-sk="conc">Conc.${arr('conc')}</th><th class="r sortable" data-sk="vsmenor">vs menor${arr('vsmenor')}</th><th class="r sortable" data-sk="vsmedia">vs média${arr('vsmedia')}</th><th class="r sortable" data-sk="v30" title="Unidades vendidas em 30 dias">Vendas 30d${arr('v30')}</th><th class="r sortable" data-sk="disp" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD${arr('disp')}</th></tr>`;
+  let rows=D.grupos.filter(g=>{
+    if(!prIdx[g.ref] && !(g.canais||[]).length) return false;
+    if(linha && g.linha!==linha) return false;
+    if(q && !(norm(g.ref).includes(q)||norm(g.descr).includes(q))) return false;
+    if(cols.length){const has=cols.some(c=>{const key=c.marketplace+'|'+c.empresa;return (prIdx[g.ref]&&prIdx[g.ref][key])||(g.canais||[]).some(ch=>ch.marketplace===c.marketplace&&(ch.empresa||'')===c.empresa);});if(!has) return false;}
+    if(fcm==="conc") return !!g.conc;
+    if(fcm==="acima"){const ps=Object.values(prIdx[g.ref]||{}).map(x=>+x.preco).filter(v=>v>0);const o=ps.length?Math.min(...ps):cmOurMin(g);return g.conc&&o!=null&&o>+g.conc.min;}
+    if(fcm==="baixou") return !!AL[g.ref];
+    if(fcm==="ativos") return refSt[g.ref]&&refSt[g.ref].has("ativo");
+    if(fcm==="pausados") return refSt[g.ref]&&refSt[g.ref].has("pausado")&&!refSt[g.ref].has("ativo");
+    if(fcm==="semestoque") return ((+g.estoque||0)-(+g.reservado||0))<=0;
+    if(fcm==="prejuizo"||fcm==="m0_10"||fcm==="m10_20"||fcm==="mge20"){const mm=RM[g.ref];const mg=mm?mm.min:null; if(fcm==="prejuizo")return mg!=null&&mg<0; if(fcm==="m0_10")return mg!=null&&mg>=0&&mg<0.10; if(fcm==="m10_20")return mg!=null&&mg>=0.10&&mg<0.20; return mg!=null&&mg>=0.20;}
+    return true;
+  });
+  if(cmSK&&CMG[cmSK]){const f=CMG[cmSK];rows=rows.slice().sort((a,b)=>{let va=f(a,{mg:RM}),vb=f(b,{mg:RM});if(typeof va==='string')return cmSD*va.localeCompare(vb);return cmSD*((va==null?-1e15:va)-(vb==null?-1e15:vb));});}
+  document.getElementById("cntCM").textContent=rows.length+" referências";
+  const span=cols.length+8;
+  document.querySelector("#tCM tbody").innerHTML=rows.slice(0,500).map(g=>{
+    const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');const k=ch.marketplace+'|'+e;if(!m2[k]||ch.status==='active')m2[k]=ch;});
+    const pix=prIdx[g.ref]||{};
+    const tds=cols.map(c=>{const key=c.marketplace+'|'+c.empresa;const ch=m2[key];const pr=pix[key];const preco=ch?+ch.preco:(pr?+pr.preco:null);const stv=ch?ch.status:(pr?pr.st:null);return (preco!=null&&preco>0)?`<td class="r"><span class="dotA ${stNorm(stv)==='ativo'?'d-active':stNorm(stv)==='pausado'?'d-paused':'d-none'}"></span> <span class="num">${BRL(preco)}</span></td>`:'<td class="r no">—</td>';}).join("");
+    const mm=RM[g.ref];const mgTd=mm?`<td class="r mg ${mgCls(mm.min)}" title="pior canal">${PCT(mm.min)}</td>`:'<td class="r no">—</td>';
+    const cc=g.conc?`<span class="num">${BRL(g.conc.min)}</span>–${BRL(g.conc.max)} <span class="pill" style="background:rgba(227,133,59,.16);color:var(--con)">${g.conc.ofertas}</span>`:'<span class="no">—</span>';
+    const ourP=Object.values(pix).map(x=>+x.preco).filter(v=>v>0);const our=ourP.length?Math.min(...ourP):cmOurMin(g);
+    const dMenor=g.conc?diffCell(our,g.conc.min):'<td class="r no">—</td>';
+    const dMedia=g.conc?diffCell(our,g.conc.medio):'<td class="r no">—</td>';
+    const v30=cmV30(g.ref);
+    return `<tr class="click"><td class="num" style="white-space:nowrap">${fotoImg(g.foto,30)} ${esc(g.ref)}${g.is_kit?' <span class="pill pkit">KIT</span>':''}${AL[g.ref]?` <span class="pill" style="background:rgba(227,133,59,.22);color:var(--con)" title="concorrente baixou preço (7d)">🔻${AL[g.ref].n}</span>`:''}</td><td class="desc" title="${esc(g.descr||'')}">${esc((g.descr||'').slice(0,34))}</td>${mgTd}${tds}<td class="r">${cc}</td>${dMenor}${dMedia}<td class="r num">${v30?Math.round(v30):'<span class="no">—</span>'}</td><td class="r" title="físico ${Math.round(+g.estoque||0)} · reservado ${Math.round(+g.reservado||0)}">${estBadge((+g.estoque||0)-(+g.reservado||0))}</td></tr>
+      <tr class="detrow" hidden><td colspan="${span}">${cmDetail(g)}</td></tr>`;
+  }).join("")||`<tr><td colspan="${span}" class="emp">Nada encontrado.</td></tr>`;
+  window._cmRows=rows;
+}
+function cmDetail(g){
+  // memória de cálculo COMPLETA por canal — mesma fonte da Precificação (todas as linhas do PR desta referência)
+  const prs=PR.filter(r=>r.ref===g.ref).sort((a,b)=>(a.plat||'').localeCompare(b.plat||'')||(a.empresa||'').localeCompare(b.empresa||''));
+  const chCards=prs.map(r=>pricingCardHtml(r)).join("")||'<div class="detcard"><div class="emp">Sem canal nosso nesta referência.</div></div>';
+  const rep=prs[0]||null;
+  const espCard=rep?especialista(rep):'';
+  const iaBtn=`<div style="display:flex;flex-direction:column;gap:8px"><button class="btn ia" data-ref="${esc(g.ref)}" style="background:transparent;border:1px solid var(--ac);color:var(--ac)">🧠 Análise IA do anúncio</button><button class="btn img" data-ref="${esc(g.ref)}" data-titulo="${esc(g.descr||'')}" data-pid="${esc(g.product_id||'')}" style="background:transparent;border:1px solid var(--con);color:var(--con)">🖼️ Gerar imagem</button></div>`;
+  return `<div class="detr">${alertCard(g)}${fotoCard(g)}${chCards}${comparativoCard(g)}${espCard}${iaBtn}</div>`;
+}
+
+/* ===== CRIAR ===== */
+let fc2="todos";
+function criarPronto(x){return !!(x.tem_foto && x.ean && +x.preco_sugerido>0 && x.tem_cat);}
+function drawCriar(){
+  const q=document.getElementById("qc").value.trim().toLowerCase();
+  const rows=D.criar.filter(x=>{
+    if(q&&!(x.ref.toLowerCase().includes(q)||(x.titulo||x.descrprod||"").toLowerCase().includes(q)))return false;
+    if(fc2==="pronto"&&!criarPronto(x))return false;
+    if(fc2==="semfoto"&&x.tem_foto)return false;
+    if(fc2==="semean"&&x.ean)return false;
+    if(fc2==="semestoque"&&!(x.disp!=null&&+x.disp<=0))return false;
+    const hf=HF.criar;
+    if(hf.est&&estFx(x.disp==null?null:+x.disp)!==hf.est)return false;
+    if(hf.cat&&(x.categoria_nome||'')!==hf.cat)return false;
+    if(hf.ean&&(hf.ean==='sim')!==!!x.ean)return false;
+    if(hf.pronto&&(hf.pronto==='sim')!==criarPronto(x))return false;
+    return true;
+  });
+  document.getElementById("cntC").textContent=rows.length+" candidatos";
+  document.querySelector("#tCriar thead").innerHTML='<tr><th>Foto</th><th>Ref</th><th>Título</th><th>Categoria'+hdrSel('criar','cat',uniqOpts(D.criar.map(x=>x.categoria_nome)))+'</th><th class="r">Preço sug.</th><th class="r" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD'+hdrSel('criar','est',EST_OPTS)+'</th><th>EAN'+hdrSel('criar','ean',[['sim','com EAN'],['nao','sem EAN']])+'</th><th>Pré-requisitos'+hdrSel('criar','pronto',[['sim','pronto'],['nao','falta algo']])+'</th></tr>';
+  window._criarRows=rows;
+  document.querySelector("#tCriar tbody").innerHTML=rows.slice(0,400).map((x,i)=>{
+    const pronto=criarPronto(x);
+    const motivos=[]; if(!x.tem_foto)motivos.push('foto'); if(!x.ean)motivos.push('EAN'); if(!(+x.preco_sugerido>0))motivos.push('preço'); if(!x.tem_cat)motivos.push('categoria');
+    const st=pronto?'<span class="yes">pronto ✓</span>':'<span class="mg r">falta '+motivos.join(', ')+'</span>';
+    return `<tr class="click" data-cr="${i}">
+      <td>${x.foto?`<img src="${esc(x.foto)}" alt="" style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:5px">`:'<span class="no">—</span>'}</td>
+      <td class="num" style="white-space:nowrap">${esc(x.ref)}</td>
+      <td class="desc" title="${esc(x.titulo||x.descrprod||'')}">${esc((x.titulo||x.descrprod||'').slice(0,55))}</td>
+      <td>${esc(x.categoria_nome||'—')}</td>
+      <td class="r num" style="color:var(--ac)">${BRL(x.preco_sugerido)}</td>
+      <td class="r" title="físico ${x.estoque_cd==null?'—':Math.round(+x.estoque_cd)} · reservado ${x.reservado==null?'—':Math.round(+x.reservado)}">${x.disp!=null?estBadge(+x.disp):(x.estoque_disp==null?'<span class="no">—</span>':estBadge(+x.estoque_disp))}</td>
+      <td>${x.ean?'<span class="yes">●</span>':'<span class="mg r">sem</span>'}</td>
+      <td>${st}</td></tr>
+      <tr class="detrow" hidden><td colspan="8">${criarDetail(x,pronto,motivos)}</td></tr>`;
+  }).join("")||'<tr><td colspan="8" class="emp">Nada encontrado.</td></tr>';
+}
+function criarDetail(x,pronto,motivos){
+  const img=x.foto?`<div class="detcard" style="text-align:center;min-width:170px"><img src="${esc(x.foto)}" alt="" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px"><div style="font-size:10px;color:var(--mut);margin-top:3px">${x.n_fotos||0} foto(s)</div></div>`:'<div class="detcard" style="min-width:150px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px">sem foto</div>';
+  const info=`<div class="detcard" style="min-width:240px"><h5>${esc(x.ref)}</h5>
+    <div class="calcline"><span class="l">Título</span><span class="v">${esc((x.titulo||x.descrprod||'').slice(0,42))}</span></div>
+    <div class="calcline"><span class="l">Categoria (ML)</span><span class="v">${esc(x.categoria_nome||'—')}</span></div>
+    <div class="calcline"><span class="l">Preço sugerido</span><span class="v">${BRL(x.preco_sugerido)}</span></div>
+    <div class="calcline"><span class="l">Estoque CD (disp.)</span><span class="v">${x.disp!=null?Math.round(+x.disp):(x.estoque_disp==null?'—':Number(x.estoque_disp))}${x.estoque_cd!=null?' <span style="color:var(--mut);font-weight:400">(físico '+Math.round(+x.estoque_cd)+' − reserv. '+Math.round(+x.reservado||0)+')</span>':''}</span></div>
+    <div class="calcline"><span class="l">EAN</span><span class="v">${esc(x.ean||'—')}</span></div></div>`;
+  const imgBtn=`<button class="btn img" data-ref="${esc(x.ref)}" data-titulo="${esc(x.titulo||x.descrprod||'')}" style="background:transparent;border:1px solid var(--con);color:var(--con)">🖼️ Gerar imagem</button>`;
+  const mcpBtn=`<button class="btn mcpMontar" data-ref="${esc(x.ref)}" data-busca="${esc(x.descrprod||x.titulo||x.ref)}" style="background:var(--ac);color:#fff">🏭 Cadastrar no Anymarket</button>`;
+  const acao=pronto
+    ?`<div class="detcard" style="min-width:300px"><h5 style="color:#58c27d">Pronto p/ cadastro ✓</h5><div style="font-size:12px;line-height:1.5">Cadastro vai pelo <b>Sankhya → Anymarket</b> (sem duplicar). Monta a proposta, você revisa o preço e publica.</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${mcpBtn}${imgBtn}</div><div class="mcpOut" style="margin-top:8px"></div></div>`
+    :`<div class="detcard" style="min-width:220px"><h5 style="color:var(--con)">Falta p/ cadastrar</h5><div style="font-size:12px;line-height:1.6">${motivos.map(m=>'• '+m).join('<br>')}</div>${!x.tem_foto?`<div style="margin-top:8px">${imgBtn}</div>`:''}</div>`;
+  return `<div class="detr">${img}${info}${acao}</div>`;
+}
+
+/* ===== REVENDEDORES ===== */
+function drawRev(){
+  const q=document.getElementById("qr").value.trim().toLowerCase();
+  const hf=HF.rev;const tipoOf=x=>x.eh_cliente===true?'cliente':(x.cnpj_status==='grey_candidato'||x.cnpj_status==='grey')?'cinza':'outro';
+  const rows=D.revendedores.filter(x=>{
+    if(q&&!((x.seller_nick||"").toLowerCase().includes(q)||(x.razao_social||"").toLowerCase().includes(q)))return false;
+    if(hf.tipo&&tipoOf(x)!==hf.tipo)return false;
+    if(hf.mp&&x.marketplace!==hf.mp)return false;
+    if(hf.cnpj&&(hf.cnpj==='sim')!==!!x.cnpj_digitos)return false;
+    if(hf.uf&&(x.uf||'')!==hf.uf)return false;
+    if(hf.nan){const n=+x.n_anuncios||0;if(hf.nan==='1'&&n!==1)return false;if(hf.nan==='2_5'&&!(n>=2&&n<=5))return false;if(hf.nan==='6'&&n<6)return false;}
+    return true;});
+  document.querySelector("#tblRev thead").innerHTML='<tr><th>Revendedor'+hdrSel('rev','tipo',[['cliente','cliente B2B'],['cinza','mercado cinza'],['outro','outros']])+'</th><th>Marketplace'+hdrSel('rev','mp',uniqOpts(D.revendedores.map(x=>x.marketplace)))+'</th><th class="r">Anúncios'+hdrSel('rev','nan',[['1','1'],['2_5','2–5'],['6','6+']])+'</th><th>CNPJ'+hdrSel('rev','cnpj',[['sim','com CNPJ'],['nao','sem CNPJ']])+'</th><th>Razão social</th><th>Município'+hdrSel('rev','uf',uniqOpts(D.revendedores.map(x=>x.uf)))+'</th></tr>';
+  document.getElementById("cntR").textContent=rows.length+" revendedores";
+  document.querySelector("#tblRev tbody").innerHTML=rows.map((x,i)=>{
+    const ans=(x.anuncios||[]);
+    const det=ans.length?`<div class="detr">${ans.map(a=>`<div class="detcard" style="min-width:200px"><div class="num" style="font-weight:800">${BRL(a.preco)}</div><div class="ti" title="${esc(a.titulo)}" style="max-width:220px">${esc(a.titulo||'')}</div>${a.url?`<div class="links"><a class="lnk" href="${esc(a.url)}" target="_blank" rel="noopener">ver ↗</a></div>`:""}</div>`).join("")}</div>`:'<div class="emp">sem anúncios capturados</div>';
+    const tipo=x.eh_cliente===true?'<span class="pill p155">cliente B2B</span>':x.cnpj_status==='grey_candidato'||x.cnpj_status==='grey'?'<span class="pill pkit">mercado cinza</span>':'';
+    return `<tr class="click" data-r="${i}">
+      <td>${esc(x.seller_nick||"")} ${tipo}${x.seller_url?` <a class="lnk" href="${esc(x.seller_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">loja ↗</a>`:""}</td>
+      <td>${esc(x.marketplace||"")}</td><td class="r num">${x.n_anuncios||"—"}</td>
+      <td class="num">${x.cnpj_digitos?esc(x.cnpj_digitos):'<span class="no">—</span>'}</td>
+      <td class="desc">${esc(x.razao_social||"")}</td><td>${esc([x.municipio,x.uf].filter(Boolean).join("/"))}</td></tr>
+      <tr class="detrow" hidden><td colspan="6">${det}</td></tr>`;
+  }).join("")||'<tr><td colspan="6" class="emp">Nada.</td></tr>';
+}
+
+/* ===== CONCILIAÇÃO ===== */
+let fco="todos", fEmp="", fPlat="", verTodas=false;
+function matrizData(){
+  const plats=verTodas?D.plataformas.map(p=>p.code):D.plataformas.filter(p=>p.principal).map(p=>p.code);
+  const out={};
+  D.empresas.forEach(emp=>{out[emp]=plats.map(code=>{const a=D.any_counts.find(r=>r.empresa===emp&&r.marketplace===code);const real=code==='MERCADO_LIVRE'?(D.real_counts.find(r=>r.empresa===emp)||{}).refs:null;return {code,nome:platNome(code),integrado:!!a,refs_any:a?a.refs:0,anuncios_any:a?a.anuncios:0,refs_real:real!=null?real:null};});});
+  return out;
+}
+function renderMatriz(){
+  const md=matrizData();let h='';
+  Object.keys(md).forEach(emp=>{
+    h+=`<div class="grp"><div class="ghead" style="cursor:default"><span class="ref" style="font-size:14px">🏢 ${esc(emp)}</span><span class="ds">base Tabela Sankhya: ${D.resumo.na_155} · no Anymarket: ${D.resumo.no_any}</span></div><div style="padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">`;
+    md[emp].forEach(m=>{
+      if(m.integrado){const dif=m.refs_real!=null?(m.refs_real-m.refs_any):null;
+        h+=`<div class="chn"><div class="cl ${/MERCADO/.test(m.code)?'mk-ML':/SHOPEE/.test(m.code)?'mk-SH':''}"><span class="dotA d-active"></span>${esc(m.nome)}</div><div style="font-size:12px"><b class="num">${m.refs_any}</b> refs · <span class="num">${m.anuncios_any}</span> an.</div>${m.refs_real!=null?`<div style="font-size:11px;color:var(--mut)">real: <b class="num">${m.refs_real}</b>${dif>0?` · <span class="mg r">${dif} fora</span>`:dif<0?` · <span class="mg y">${-dif} só Any</span>`:' ✓'}</div>`:''}</div>`;
+      }else{h+=`<div class="chn" style="opacity:.6;border-style:dashed;border-color:var(--warn)"><div class="cl" style="color:var(--warn)"><span class="dotA d-none"></span>${esc(m.nome)}</div><div style="font-size:12px;color:var(--warn)">0 — a integrar</div></div>`;}
+    });
+    h+='</div></div>';
+  });
+  document.getElementById("matriz").innerHTML=h;
+}
+function concCols(){return canalCols().map(c=>({mp:c.marketplace,emp:c.empresa})).filter(c=>(!fEmp||c.emp===fEmp)&&(!fPlat||c.mp===fPlat));}
+function cellState(x,mp,emp){const k=mp+'|'+emp;const any=(x.any_canais&&x.any_canais[k])||0;const hasReal=(mp==='MERCADO_LIVRE'||mp==='SHOPEE');const real=hasReal?((x.real_canais&&x.real_canais[k])||0):0;
+  if(hasReal){if(real>0&&any===0)return 'real';if(any>0&&real>0)return 'both';if(any>0)return 'semreal';return 'no';}return any>0?'any':'no';}
+const CELL_OPTS=[['both','● no hub e real'],['any','● só no hub'],['semreal','● no hub sem real'],['real','● real fora do hub'],['no','○ ausente'],['tem','tem (qualquer)']];
+function cellCanal(x,mp,emp){
+  const k=mp+'|'+emp;const any=(x.any_canais&&x.any_canais[k])||0;const hasReal=(mp==='MERCADO_LIVRE'||mp==='SHOPEE');const real=hasReal?((x.real_canais&&x.real_canais[k])||0):0;
+  if(hasReal){if(real>0&&any===0)return `<td class="num"><span class="c-real">● ${real}</span></td>`;if(any>0&&real>0)return `<td class="num"><span class="c-both">● ${any}</span></td>`;if(any>0&&real===0)return `<td class="num"><span class="c-semreal">● ${any}</span></td>`;return '<td class="c-no">○</td>';}
+  return any>0?`<td class="num"><span class="c-any">● ${any}</span></td>`:'<td class="c-no">○</td>';
+}
+function precoDiv(x){const m=x.preco_canais;if(!m)return null;const ps=Object.values(m).map(v=>+v.preco).filter(v=>v>0);if(!ps.length)return null;return {mn:Math.min(...ps),mx:Math.max(...ps)};}
+function concFiltered(){
+  const q=norm(document.getElementById("qco").value);const cols=concCols();const linha=document.getElementById("coLinha").value;
+  return D.conciliacao.filter(x=>{
+    if(q && !(norm(x.ref).includes(q)||norm(x.descricao).includes(q))) return false;
+    if(linha && x.linha!==linha) return false;
+    if(fco==="155foraany" && !(x.na_155&&!x.no_anymarket)) return false;
+    if(fco==="anyfora155" && !(x.no_anymarket&&!x.na_155)) return false;
+    if(fco==="forahub" && !(x.real_ml>0&&x.any_ml===0)) return false;
+    if(fco==="kit" && !x.is_kit) return false;
+    const hf=HF.conc;
+    if(hf.sank && (hf.sank==='sim')!==!!x.na_155) return false;
+    if(hf.custo && (hf.custo==='sim')!==(+x.custo_final>0)) return false;
+    if(hf.est && estFx(x.estoque==null?null:+x.estoque)!==hf.est) return false;
+    for(const c of cols){const v=hf['ch:'+c.mp+'|'+c.emp]; if(!v) continue; const st=cellState(x,c.mp,c.emp); if(v==='tem'?st==='no':st!==v) return false;}
+    if((fEmp||fPlat)&&fco!=="155foraany"){const has=cols.some(c=>{const k=c.mp+'|'+c.emp;return (x.any_canais&&x.any_canais[k])||(c.mp==='MERCADO_LIVRE'&&x.real_canais&&x.real_canais[k]);});if(!has)return false;}
+    return true;
+  });
+}
+function concDetail(x){
+  const al=anyLink(x.product_id);const m=x.preco_canais||{};
+  const cards=Object.keys(m).map(k=>{const [mp,emp]=k.split('|');const v=m[k];const shLink=(/SHOPEE/.test(mp)&&x.shopee_real&&x.shopee_real[emp]&&x.shopee_real[emp].url)||v.link;return `<div class="detcard"><h5 class="${/MERCADO/.test(mp)?'mk-ML':/SHOPEE/.test(mp)?'mk-SH':''}">${esc(platShort(mp))} · ${esc(emp)} <span class="pill" style="font-size:9px;background:rgba(93,169,255,.16);color:#5da9ff">no Anymarket</span></h5><div class="num" style="font-weight:800">${BRL(v.preco)}</div><div style="font-size:11px;color:var(--mut)">${esc(v.st||'')}</div><div class="links">${shLink?`<a class="lnk" href="${esc(shLink)}" target="_blank" rel="noopener">marketplace ↗</a>`:""}${al?`<a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:""}</div></div>`;}).join("");
+  // ML real fora do hub (loja sem anuncio ML no Anymarket)
+  const mlAnyLojas=Object.keys(m).filter(k=>/MERCADO/.test(k)).map(k=>k.split('|')[1]);
+  const mlFora={};Object.keys(x.ml_real||{}).forEach(l=>{if(!mlAnyLojas.includes(l))mlFora[l]=x.ml_real[l];});
+  const shCards=shopeeRealCards(x.shopee_real);
+  const mlCards=realItemCards(mlFora,'ML');
+  const banner=divergBanner(x);
+  const anyHead=al?`<div class="detcard" style="min-width:150px"><h5 class="any">Anymarket (hub)</h5><div style="font-size:11px;color:var(--mut)">produto #${esc(x.product_id)}</div><div class="links"><a class="lnk any" href="${al}" target="_blank" rel="noopener">abrir produto ↗</a></div></div>`:'';
+  return `<div class="detr">${banner}${anyHead}${cards}${shCards}${mlCards}${(!cards&&!shCards&&!mlCards&&!al)?'<span class="emp">sem anúncio / sem link</span>':''}</div>`;
+}
+function drawConc(){
+  const cols=concCols();
+  document.querySelector("#tCo thead").innerHTML='<tr><th>Ref</th><th>Descrição</th><th>Sankhya'+hdrSel('conc','sank',SIMNAO)+'</th>'+cols.map(c=>`<th class="${/MERCADO/.test(c.mp)?'mk-ML':'mk-SH'}">${esc(platShort(c.mp))}<br><span style="font-weight:400;text-transform:none">${esc(c.emp)}</span>${hdrSel('conc','ch:'+c.mp+'|'+c.emp,CELL_OPTS)}</th>`).join("")+'<th class="r">Preço divulgado</th><th class="r">Custo'+hdrSel('conc','custo',[['sim','com custo'],['nao','sem custo']])+'</th><th class="r">Estoque'+hdrSel('conc','est',EST_OPTS)+'</th></tr>';
+  const rows=concFiltered();document.getElementById("cntCo").textContent=rows.length+" referências";const span=cols.length+6;
+  document.querySelector("#tCo tbody").innerHTML=rows.slice(0,700).map((x,i)=>{const pd=precoDiv(x);return `<tr class="click" data-c="${i}">
+    <td class="num">${esc(x.ref)}${x.is_kit?' <span class="pill pkit">KIT</span>':''}${divergBanner(x)?' <span class="pill" style="background:rgba(227,133,59,.18);color:var(--con)" title="divergência de vínculo Anymarket × loja">⚠</span>':''}</td><td class="desc">${esc(x.descricao||"")}</td>
+    <td>${x.na_155?'<span class="yes">●</span>':'<span class="no">○</span>'}</td>
+    ${cols.map(c=>cellCanal(x,c.mp,c.emp)).join("")}
+    <td class="r num">${pd?(pd.mn===pd.mx?BRL(pd.mn):BRL(pd.mn)+'–'+BRL(pd.mx)):'<span class="no">—</span>'}</td>
+    <td class="r num">${+x.custo_final>0?BRL(x.custo_final):'<span class="no">—</span>'}</td>
+    <td class="r">${x.estoque==null?'<span class="no">—</span>':estBadge(+x.estoque)}</td></tr>
+    <tr class="detrow" hidden><td colspan="${span}">${concDetail(x)}</td></tr>`;}).join("")||`<tr><td colspan="${span}" class="emp">Nada encontrado.</td></tr>`;
+  if(rows.length>700) document.querySelector("#tCo tbody").innerHTML+=`<tr><td colspan="${span}" class="note">Mostrando 700 de ${rows.length} — refine.</td></tr>`;
+  window._concRows=rows;
+}
+
+/* ===== VENDAS & DESEMPENHO ===== */
+let fv="todos";
+function vendCross(){ // lookup por ref: anuncio no hub? concorrencia?
+  const L={};
+  (D.conciliacao||[]).forEach(x=>{L[x.ref]=L[x.ref]||{};L[x.ref].any=(x.any_ml||0)+( (x.any_canais&&Object.keys(x.any_canais).length)||0 );L[x.ref].no_any=!!x.no_anymarket;L[x.ref].pid=x.product_id;});
+  (D.grupos||[]).forEach(g=>{L[g.ref]=L[g.ref]||{};L[g.ref].canais=(g.canais||[]).filter(c=>+c.preco>0);L[g.ref].conc=g.conc;L[g.ref].foto=g.foto;});
+  Object.keys(D.ofertas||{}).forEach(ref=>{const comp=(D.ofertas[ref]||[]).filter(o=>!o.eh_nitron&&+o.preco>0);L[ref]=L[ref]||{};L[ref].nComp=comp.length;L[ref].nSellers=new Set(comp.map(o=>o.seller)).size;if(comp.length){L[ref].compMin=Math.min(...comp.map(o=>+o.preco));}});
+  return L;
+}
+function vendStatus(ref,L){const e=L[ref]||{};const temAny=(e.canais&&e.canais.length)|| (e.any&&e.any>0); return temAny?'<span class="yes">sim</span>':'<span class="mg r">sem anúncio no hub ⚠</span>';}
+let VD=null,_vdOpts=false;
+function vdQuery(){
+  const p=[];
+  const de=document.getElementById('vDe').value, ate=document.getElementById('vAte').value;
+  if(de)p.push('de='+de+'T00:00:00Z'); if(ate)p.push('ate='+ate+'T23:59:59Z');
+  const mp=document.getElementById('vMp').value,em=document.getElementById('vEmp').value,ca=document.getElementById('vCat').value;
+  if(mp)p.push('mp='+encodeURIComponent(mp)); if(em)p.push('empresa='+encodeURIComponent(em)); if(ca)p.push('categoria='+encodeURIComponent(ca));
+  return p.join('&');
+}
+async function loadVendas(){
+  document.getElementById('cntV').textContent='carregando…';
+  try{const r=await fetch(FN+'/comando-vendas?secret='+SECRET+(vdQuery()?'&'+vdQuery():''),{headers:HJ});VD=await r.json();}
+  catch(e){document.getElementById('vendasKpis').innerHTML='<span class="emp">Falha ao carregar vendas.</span>';return;}
+  if(!_vdOpts && VD.opcoes){
+    document.getElementById('vMp').innerHTML='<option value="">Todas plataformas</option>'+VD.opcoes.marketplaces.map(m=>`<option value="${esc(m)}">${esc(platShort(m))}</option>`).join('');
+    document.getElementById('vEmp').innerHTML='<option value="">Todas empresas</option>'+VD.opcoes.empresas.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    document.getElementById('vCat').innerHTML='<option value="">Todas categorias</option>'+VD.opcoes.categorias.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    _vdOpts=true;
+  }
+  drawVendasKpis(); renderVendasTable();
+}
+function drawVendas(){ loadVendas(); }
+function drawVendasKpis(){
+  const v=VD||{}; const r=v.resumo||{}; const mp=v.por_mp||[],emp=v.por_emp||[],mes=v.por_mes||[],abc=v.abc||[],cat=v.por_categoria||[];
+  const tot=+r.receita||0; const tk=r.pedidos?tot/r.pedidos:0;
+  const maxM=Math.max(1,...mes.map(m=>+m.receita||0));
+  const spark=mes.length?mes.map(m=>`<div title="${m.mes}: ${BRL(m.receita)} · ${m.pedidos} ped" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px"><div style="width:70%;background:var(--ac);border-radius:3px 3px 0 0;height:${Math.round(60*(+m.receita||0)/maxM)}px"></div><span style="font-size:9px;color:var(--mut)">${String(m.mes).slice(5)}</span></div>`).join(""):'<span class="emp">—</span>';
+  const mpRow=mp.map(m=>`<div class="calcline"><span class="l">${esc(platShort(m.mp))}</span><span class="v">${BRL(m.receita)} · ${m.pedidos} ped · ${PCT((+m.receita||0)/(tot||1))}</span></div>`).join("");
+  const empRow=emp.map(m=>`<div class="calcline"><span class="l"><span class="badge-emp ${empCls(m.emp)}">${esc(m.emp)}</span></span><span class="v">${BRL(m.receita)} · ${m.pedidos} ped · ${PCT((+m.receita||0)/(tot||1))}</span></div>`).join("");
+  const abcRow=abc.map(a=>`<div class="calcline"><span class="l">Classe ${a.classe} · ${a.refs} refs</span><span class="v">${BRL(a.receita)} · ${PCT((+a.receita||0)/(tot||1))}</span></div>`).join("");
+  const catRow=cat.slice(0,8).map(k=>`<div class="calcline"><span class="l" title="${esc(k.categoria)}">${esc(String(k.categoria).slice(0,22))}</span><span class="v">${BRL(k.receita)} · ${k.skus} SKU · ${PCT((+k.receita||0)/(tot||1))}</span></div>`).join("");
+  document.getElementById("vendasKpis").innerHTML=`
+    <div class="detcard"><h5 style="color:var(--ac)">💵 Receita (filtro)</h5><div class="num" style="font-weight:800;font-size:22px">${BRL(tot)}</div><div style="font-size:11px;color:var(--mut)">${r.pedidos||0} pedidos · ${Math.round(+r.itens||0)} itens · ${r.skus||0} SKUs · ticket ${BRL(tk)}</div><div style="font-size:11px;color:var(--mut)">${(r.de||'').slice(0,10)||'—'} → ${(r.ate||'').slice(0,10)||'—'}</div></div>
+    <div class="detcard"><h5>Por marketplace</h5>${mpRow||'<span class="emp">—</span>'}</div>
+    <div class="detcard"><h5>Por empresa</h5>${empRow||'<span class="emp">—</span>'}</div>
+    <div class="detcard"><h5>Curva ABC (receita)</h5>${abcRow||'<span class="emp">—</span>'}</div>
+    <div class="detcard" style="min-width:240px"><h5>Top categorias</h5>${catRow||'<span class="emp">—</span>'}</div>
+    <div class="detcard" style="min-width:240px"><h5>Receita por mês</h5><div style="display:flex;gap:4px;height:80px;align-items:flex-end">${spark}</div></div>`;
+}
+function vendFiltered(L){
+  const q=document.getElementById("qv").value.trim().toLowerCase();
+  return ((VD&&VD.top)||[]).filter(x=>{
+    if(q && !((x.ref||'').toLowerCase().includes(q)||(x.descr||'').toLowerCase().includes(q))) return false;
+    if(fv==='A' && x.classe!=='A') return false;
+    const e=L[x.ref]||{};
+    if(fv==='semanuncio' && ((e.canais&&e.canais.length)||(e.any&&e.any>0))) return false;
+    if(fv==='perdendo'){const meu=(e.canais||[]).reduce((m,c)=>Math.min(m,+c.preco||1e9),1e9);if(!(e.compMin&&meu<1e9&&e.compMin<meu))return false;}
+    if(fv==='poucaconc' && !((e.nComp||0)<=1)) return false;
+    return true;
+  });
+}
+function renderVendasTable(){
+  const L=vendCross();
+  const rows=vendFiltered(L);
+  document.getElementById("cntV").textContent=rows.length+" referências";
+  document.querySelector("#tV thead").innerHTML='<tr><th>Ref</th><th>Descrição</th><th>ABC</th><th class="r">Qtd</th><th class="r">Receita</th><th class="r">%</th><th class="r">ML / Shopee</th><th class="r">Nitron / MundoUD</th><th>Anúncio no hub</th><th class="r">Estoque CD</th><th class="r">Concorrência</th></tr>';
+  window._vRows=rows;
+  document.querySelector("#tV tbody").innerHTML=rows.slice(0,300).map((x,i)=>{
+    const e=L[x.ref]||{};
+    const cc=e.conc?`<span class="num">${BRL(e.conc.min)}</span> <span class="pill" style="background:rgba(227,133,59,.16);color:var(--con)">${e.conc.ofertas}</span>`:(e.compMin?`<span class="num">${BRL(e.compMin)}</span>`:'<span class="no">—</span>');
+    const abcPill=x.classe==='A'?'<span class="pill p155">A</span>':x.classe==='B'?'<span class="pill pkit">B</span>':'<span class="pill" style="background:rgba(130,140,160,.2)">C</span>';
+    return `<tr class="click" data-v="${i}">
+      <td class="num" style="white-space:nowrap">${fotoImg(e.foto,28)} ${esc(x.ref)}</td>
+      <td class="desc" title="${esc(x.descr||'')}">${esc((x.descr||'').slice(0,60))}</td>
+      <td>${abcPill}</td>
+      <td class="r num" style="font-weight:700">${x.qtd}</td>
+      <td class="r num" style="font-weight:700;color:var(--ac)">${BRL(x.receita)}</td>
+      <td class="r num">${(+x.pct||0).toFixed(1)}%</td>
+      <td class="r num">${x.qtd_ml} / ${x.qtd_shopee}</td>
+      <td class="r num">${x.qtd_nitron} / ${x.qtd_mundoud}</td>
+      <td>${vendStatus(x.ref,L)}</td>
+      <td class="r" title="físico ${x.estoque_cd==null?'—':x.estoque_cd}">${estBadge(x.disp)}</td>
+      <td class="r">${cc}</td></tr>
+      <tr class="detrow" hidden><td colspan="11">${vendDetail(x,e)}</td></tr>`;
+  }).join("")||'<tr><td colspan="11" class="emp">Nada encontrado.</td></tr>';
+}
+function vendDetail(x,e){
+  const al=anyLink(e.pid);
+  const giro=`<div class="detcard" style="min-width:240px"><h5 style="color:var(--ac)">📦 Giro no período</h5>
+    <div class="calcline"><span class="l">Vendido</span><span class="v">${x.qtd} un · ${x.pedidos} pedidos</span></div>
+    <div class="calcline"><span class="l">Receita</span><span class="v">${BRL(x.receita)} (${(+x.pct||0).toFixed(1)}% do total)</span></div>
+    <div class="calcline"><span class="l">ML / Shopee</span><span class="v">${x.qtd_ml} / ${x.qtd_shopee} un</span></div>
+    <div class="calcline"><span class="l">Nitron / Mundo UD</span><span class="v">${x.qtd_nitron} / ${x.qtd_mundoud} un</span></div>
+    <div class="calcline"><span class="l">Última venda</span><span class="v">${(x.ultima||'').slice(0,10)||'—'}</span></div>
+    ${al?`<div class="links"><a class="lnk any" href="${al}" target="_blank" rel="noopener">abrir no Anymarket ↗</a></div>`:''}</div>`;
+  const grp=(D.grupos||[]).find(g=>g.ref===x.ref);
+  const comp=grp?comparativoCard(grp):'';
+  const diag=(()=>{const temAny=(e.canais&&e.canais.length)||(e.any&&e.any>0);const perdendo=e.compMin&&(e.canais||[]).some(c=>+c.preco>e.compMin);const bullets=[];
+    if(!temAny)bullets.push('⚠ Vende, mas <b>não está publicado no hub (Anymarket)</b> — publicar para controlar preço/estoque.');
+    if(perdendo)bullets.push('⚠ Há <b>concorrente mais barato</b> — revisar preço ou virar FULL/oficial.');
+    if(x.classe==='A')bullets.push('⭐ Classe <b>A</b> — produto-chave: priorizar foto/título/estoque.');
+    if((e.nComp||0)<=1 && (+x.qtd||0)>0)bullets.push('✅ <b>Pouca concorrência</b> ('+(e.nComp||0)+' concorrente'+((e.nComp||0)===1?'':'s')+') e vende — espaço para <b>subir preço/margem</b>.');
+    if(!e.foto)bullets.push('⚠ Sem foto cadastrada no hub.');
+    if(!bullets.length)bullets.push('✓ Sem alertas automáticos. Use a IA para afinar título/descrição.');
+    return `<div class="detcard" style="min-width:260px"><h5 style="color:var(--con)">🔎 Diagnóstico</h5>${bullets.map(b=>`<div style="font-size:12px;margin:3px 0">${b}</div>`).join("")}</div>`;})();
+  const ia=`<div style="display:flex;flex-direction:column;gap:8px"><button class="btn ia" data-ref="${esc(x.ref)}" style="background:transparent;border:1px solid var(--ac);color:var(--ac)">🧠 Análise IA do anúncio</button><button class="btn img" data-ref="${esc(x.ref)}" data-titulo="${esc(x.descr||'')}" data-pid="${esc(e.pid||'')}" style="background:transparent;border:1px solid var(--con);color:var(--con)">🖼️ Gerar imagem</button></div>`;
+  return `<div class="detr">${giro}${diag}${comp}${ia}</div>`;
+}
+
+/* ===== CATÁLOGO ML ===== */
+let fcat="todos", CT=null;
+async function loadCatalogo(){
+  document.getElementById('cntCat').textContent='carregando…';
+  try{const r=await fetch(FN+'/comando-catalogo?secret='+SECRET,{headers:HJ});CT=await r.json();}
+  catch(e){document.getElementById('catKpis').innerHTML='<span class="emp">Falha ao carregar.</span>';return;}
+  drawCatKpis();drawCatTable();
+}
+function drawCatalogo(){ if(!CT){loadCatalogo();} else {drawCatKpis();drawCatTable();} }
+function drawCatKpis(){
+  const r=(CT&&CT.resumo)||{};
+  document.getElementById('catKpis').innerHTML=`
+    <div class="detcard"><h5 style="color:var(--ac)">Universo ML</h5><div class="num" style="font-weight:800;font-size:22px">${r.total||0}</div><div style="font-size:11px;color:var(--mut)">refs com anúncio/oferta</div></div>
+    <div class="detcard"><h5>Converter p/ catálogo</h5><div class="num" style="font-weight:800;font-size:22px;color:var(--con)">${r.com_classico||0}</div><div style="font-size:11px;color:var(--mut)">têm anúncio "clássico"</div></div>
+    <div class="detcard"><h5>Nitron ausente</h5><div class="num" style="font-weight:800;font-size:22px;color:var(--con)">${r.nitron_ausente||0}</div><div style="font-size:11px;color:var(--mut)">catálogo só c/ concorrente</div></div>
+    <div class="detcard"><h5>Concorrente ganhando</h5><div class="num" style="font-weight:800;font-size:22px;color:var(--con)">${r.concorrente_ganhando||0}</div><div style="font-size:11px;color:var(--mut)">Nitron está mas perde no preço</div></div>
+    <div class="detcard"><h5>Nitron ganhando ✓</h5><div class="num" style="font-weight:800;font-size:22px;color:#58c27d">${r.nitron_ganhando||0}</div></div>
+    <div class="detcard"><h5>Sem EAN</h5><div class="num" style="font-weight:800;font-size:22px">${r.sem_ean||0}</div></div>
+    <div class="detcard"><h5>Sem estoque CD</h5><div class="num" style="font-weight:800;font-size:22px;color:var(--bad)">${r.sem_estoque||0}</div><div style="font-size:11px;color:var(--mut)">disp. Sankhya ≤ 0</div></div>`;
+}
+function catFiltered(){
+  const q=document.getElementById('qcat').value.trim().toLowerCase();
+  return ((CT&&CT.rows)||[]).filter(x=>{
+    if(q && !((x.ref||'').toLowerCase().includes(q)||(x.descr||'').toLowerCase().includes(q))) return false;
+    if(fcat==='classico' && !(x.classico>0)) return false;
+    if(fcat==='ausente' && x.dono!=='Nitron ausente') return false;
+    if(fcat==='perdendo' && x.dono!=='concorrente ganhando') return false;
+    if(fcat==='semean' && x.tem_ean) return false;
+    if(fcat==='semestoque' && !(x.disp!=null && +x.disp<=0)) return false;
+    const hf=HF.cat;
+    if(hf.ean && (hf.ean==='sim')!==!!x.tem_ean) return false;
+    if(hf.dono && x.dono!==hf.dono) return false;
+    if(hf.acao && x.acao!==hf.acao) return false;
+    if(hf.cl && (hf.cl==='sim')!==(x.classico>0)) return false;
+    if(hf.ct && (hf.ct==='sim')!==(x.cat>0)) return false;
+    if(hf.est && estFx(x.disp==null?null:+x.disp)!==hf.est) return false;
+    if(hf.linha && (x.linha||'')!==hf.linha) return false;
+    return true;
+  });
+}
+function catDonoPill(d){return d==='Nitron ganhando'?'<span class="yes">Nitron ganhando ✓</span>':d==='concorrente ganhando'?'<span class="mg r">concorrente ganhando ⚠</span>':d==='Nitron ausente'?'<span class="mg r">Nitron ausente ⚠</span>':d==='só clássico'?'<span class="mg y">só clássico</span>':'<span class="no">'+esc(d||'—')+'</span>';}
+function drawCatTable(){
+  const rows=catFiltered();document.getElementById('cntCat').textContent=rows.length+' referências';
+  const all=(CT&&CT.rows)||[];
+  document.querySelector('#tCat thead').innerHTML='<tr><th>Ref</th><th>Descrição'+hdrSel('cat','linha',uniqOpts(all.map(x=>x.linha)))+'</th><th>EAN'+hdrSel('cat','ean',[['sim','com EAN'],['nao','sem EAN']])+'</th><th class="r">Catálogo'+hdrSel('cat','ct',[['sim','tem'],['nao','não tem']])+'</th><th class="r">Clássico'+hdrSel('cat','cl',[['sim','tem'],['nao','não tem']])+'</th><th>Dono do catálogo'+hdrSel('cat','dono',uniqOpts(all.map(x=>x.dono)))+'</th><th>Ação'+hdrSel('cat','acao',uniqOpts(all.map(x=>x.acao)))+'</th><th class="r" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD'+hdrSel('cat','est',EST_OPTS)+'</th></tr>';
+  window._catRows=rows;
+  document.querySelector('#tCat tbody').innerHTML=rows.slice(0,500).map((x,i)=>`<tr class="click" data-cat="${i}">
+    <td class="num" style="white-space:nowrap">${fotoImg(x.foto,28)} ${esc(x.ref)}</td>
+    <td class="desc" title="${esc(x.descr||'')}">${esc((x.descr||'').slice(0,55))}</td>
+    <td>${x.tem_ean?'<span class="yes">●</span>':'<span class="mg r">sem ⚠</span>'}</td>
+    <td class="r num">${x.cat||0}</td>
+    <td class="r num ${x.classico>0?'mg r':''}">${x.classico||0}</td>
+    <td>${catDonoPill(x.dono)}</td>
+    <td><span class="pill ${/converter|disputar|cadastrar/.test(x.acao)?'pkit':'p155'}">${esc(x.acao)}</span></td>
+    <td class="r" title="físico ${x.estoque_cd==null?'—':Math.round(+x.estoque_cd)} · reservado ${x.reservado==null?'—':Math.round(+x.reservado)}">${x.disp==null?'<span class="no">—</span>':estBadge(+x.disp)}</td></tr>
+    <tr class="detrow" hidden><td colspan="8">${catDetail(x)}</td></tr>`).join('')||'<tr><td colspan="8" class="emp">Nada.</td></tr>';
+}
+function catDetail(x){
+  const al=anyLink(x.product_id);
+  const ans=(x.anuncios||[]).map(a=>`<div class="calcline"><span class="l">${esc(a.conta||'')} ${a.is_catalog?'<span class="pill p155" style="font-size:9px">catálogo</span>':'<span class="pill pkit" style="font-size:9px">clássico</span>'} ${esc(a.st||'')}</span><span class="v">${BRL(a.preco)}</span></div>`).join('')||'<span class="emp">sem anúncio ML no Anymarket</span>';
+  const own=`<div class="calcline"><span class="l">Posição</span><span class="v">${catDonoPill(x.dono)}</span></div>`+
+    `<div class="calcline"><span class="l">Nossos anúncios (catálogo / clássico)</span><span class="v">${x.cat||0} / ${x.classico||0}</span></div>`+
+    (x.our_cat_min!=null?`<div class="calcline"><span class="l">Nosso menor no catálogo</span><span class="v">${BRL(x.our_cat_min)}</span></div>`:'')+
+    (x.comp_min!=null?`<div class="calcline"><span class="l">Concorrente menor</span><span class="v">${BRL(x.comp_min)}</span></div>`:'')+
+    `<div class="calcline"><span class="l">Concorrentes no catálogo</span><span class="v">${x.n_comp||0}</span></div>`;
+  const todo=[];
+  if(x.classico>0)todo.push('Converter '+(x.cat>0?'o(s) <b>'+x.classico+' clássico(s) restante(s)</b>':'os <b>'+x.classico+' clássico(s)</b>')+' para catálogo no Anymarket (tipo de anúncio = Catálogo).');
+  if(x.dono==='Nitron ausente')todo.push('<b>Entrar no catálogo</b>: publicar a oferta da Nitron (hoje só concorrente'+(x.comp_min?', a '+BRL(x.comp_min):'')+').');
+  if(x.dono==='concorrente ganhando')todo.push('<b>Disputar preço</b>: concorrente mais barato ('+BRL(x.comp_min)+' vs nosso '+BRL(x.our_cat_min)+').');
+  if(x.dono==='Nitron ganhando'&&x.comp_min!=null)todo.push('✓ <b>Nitron ganhando</b> o catálogo (nosso '+BRL(x.our_cat_min)+' vs concorrente '+BRL(x.comp_min)+').');
+  if(x.dono==='só clássico')todo.push('Você está no ML mas <b>fora do catálogo</b> — converter para catálogo.');
+  if(!x.tem_ean)todo.push('Cadastrar EAN/GTIN no SKU.');
+  if(!todo.length)todo.push('✓ Tudo certo neste produto.');
+  return `<div class="detr">
+    <div class="detcard" style="min-width:280px"><h5 class="mk-ML">Anúncios ML — ${esc(x.ref)}</h5>${ans}<div style="border-top:1px dashed var(--bd);margin:6px 0"></div>${own}${al?`<div class="links"><a class="lnk any" href="${al}" target="_blank" rel="noopener">abrir no Anymarket ↗</a></div>`:''}</div>
+    <div class="detcard" style="min-width:240px"><h5 style="color:var(--con)">O que fazer</h5><div style="font-size:12px;line-height:1.6">${todo.map(t=>'• '+t).join('<br>')}</div></div>
+  </div>`;
+}
+
+/* ===== CONFLITOS (1 anúncio ML ↔ 2+ cores) + MANUAL POR SKU ===== */
+let CF=null, fconf="diverg";
+const mlUrl=lid=>lid?'https://produto.mercadolivre.com.br/'+String(lid).replace('MLB','MLB-'):null;
+function confProposta(x){const p=+x.preco_ml||0;if(p>0&&(!(+x.be>0)||p>=+x.be))return {preco:p,regra:'preço ML atual'};if(+x.alvo>0)return {preco:+(+x.alvo).toFixed(2),regra:'preço-alvo (ML atual abaixo do break-even)'};return {preco:+x.any_max||p,regra:'maior preço do hub (anúncio sem cálculo ML — confira antes)'};}
+async function loadConflitos(){
+  document.getElementById('cntConf').textContent='carregando…';
+  try{const r=await fetch(FN+'/comando-sku?secret='+SECRET+'&acao=conflitos',{headers:HJ});CF=await r.json();if(CF.error)throw new Error(CF.error);}
+  catch(e){document.getElementById('confKpis').innerHTML='<span class="emp">Falha ao carregar: '+esc(e.message)+'</span>';CF=null;return;}
+  drawConflitos();drawManual();
+}
+function confFiltered(){
+  const q=norm(document.getElementById('qconf').value);const hf=HF.conf;
+  return ((CF&&CF.conflitos)||[]).filter(x=>{
+    if(q&&!(norm(x.lid).includes(q)||norm(x.titulo).includes(q)||(x.offers||[]).some(o=>norm(o.ref).includes(q))))return false;
+    if(fconf==='diverg'&&!(x.n_precos>1))return false;
+    if(fconf==='abaixo_be'){const pr=confProposta(x);if(!(+x.be>0&&pr.preco<+x.be))return false;}
+    if(hf.loja&&x.loja!==hf.loja)return false;
+    if(hf.st&&stNorm(x.ml_status||((x.offers||[])[0]||{}).st)!==hf.st)return false;
+    return true;});
+}
+function drawConflitos(){
+  if(!CF)return;const all=CF.conflitos||[];
+  document.getElementById('confKpis').innerHTML=`
+    <div class="detcard"><h5 style="color:var(--con)">Anúncios ML c/ 2+ cores</h5><div class="num" style="font-weight:800;font-size:22px">${all.length}</div><div style="font-size:11px;color:var(--mut)">${all.reduce((a,x)=>a+x.n_offers,0)} ofertas no Anymarket</div></div>
+    <div class="detcard"><h5 style="color:var(--bad)">Com preços divergentes</h5><div class="num" style="font-weight:800;font-size:22px;color:var(--bad)">${all.filter(x=>x.n_precos>1).length}</div><div style="font-size:11px;color:var(--mut)">a alinhar</div></div>
+    <div class="detcard"><h5>Recusados (modo de preço)</h5><div class="num" style="font-weight:800;font-size:22px;color:var(--con)">${(CF.manuais||[]).length}</div><div style="font-size:11px;color:var(--mut)">ofertas — ver abaixo</div></div>`;
+  const rows=confFiltered();window._confRows=rows;
+  document.getElementById('cntConf').textContent=rows.length+' anúncios';
+  document.querySelector('#tConf thead').innerHTML='<tr><th><input type="checkbox" id="confAll" title="selecionar todos"></th><th>Anúncio ML</th><th>Loja'+hdrSel('conf','loja',[['Nitron','Nitron'],['Mundo UD','Mundo UD']])+'</th><th>Status'+hdrSel('conf','st',[['ativo','● ativo'],['pausado','⏸ pausado']])+'</th><th>Título</th><th class="r">Preço ML</th><th>Cores no Anymarket (preço por oferta)</th><th class="r">Break-even</th><th class="r">Alvo</th><th class="r">Novo preço único</th><th></th></tr>';
+  document.querySelector('#tConf tbody').innerHTML=rows.map((x,i)=>{const pr=confProposta(x);const offs=(x.offers||[]).map(o=>`<span class="pill ${+o.preco===pr.preco?'p155':'pkit'}" style="margin:1px" title="offer ${o.oid} · ${esc(o.st||'')}">${esc(o.ref)} ${BRL(o.preco)}</span>`).join(' ');
+    const ab=+x.be>0&&pr.preco<+x.be;
+    return `<tr data-i="${i}"><td><input type="checkbox" class="confSel"></td>
+      <td class="num" style="white-space:nowrap">${mlUrl(x.lid)?`<a class="lnk" href="${mlUrl(x.lid)}" target="_blank" rel="noopener">${esc(x.lid)} ↗</a>`:esc(x.lid)}</td>
+      <td><span class="badge-emp ${empCls(x.loja)}">${esc(x.loja)}</span></td><td>${stPill(x.ml_status||((x.offers||[])[0]||{}).st)}</td>
+      <td class="ti" title="${esc(x.titulo||'')}">${esc(x.titulo||'')}</td>
+      <td class="r num" style="font-weight:700">${BRL(x.preco_ml)}</td>
+      <td style="white-space:normal;min-width:220px">${offs}</td>
+      <td class="r num">${BRL(x.be)}</td><td class="r num">${BRL(x.alvo)}</td>
+      <td class="r"><input type="number" class="confPreco" step="0.01" value="${(+pr.preco||0).toFixed(2)}" style="width:84px" title="${esc(pr.regra)}">${ab?'<div class="mg r" style="font-size:10px">abaixo do BE</div>':''}</td>
+      <td><button class="btn ghost confUm">Alinhar</button><div class="confRes" style="font-size:11px"></div></td></tr>`;}).join('')||'<tr><td colspan="11" class="emp">Nenhum conflito com esse filtro.</td></tr>';
+}
+function drawManual(){
+  const ms=(CF&&CF.manuais)||[];const byProd={};ms.forEach(m=>{const k=m.product_id||('oid'+m.oid);(byProd[k]=byProd[k]||[]).push(m);});
+  document.querySelector('#tManual thead').innerHTML='<tr><th>Produto Anymarket</th><th>Modo (pelo erro)</th><th>Ofertas recusadas</th><th>Último erro</th><th>Ação</th></tr>';
+  document.querySelector('#tManual tbody').innerHTML=Object.keys(byProd).map(k=>{const g=byProd[k];const m0=g[0];
+    const modo=m0.modo==='MANUAL_SKU'?'<span class="pill pkit">Manual por SKU</span>':m0.modo==='AUTO_CUSTO'?'<span class="pill" style="background:rgba(163,113,247,.18);color:#c0a1ff">Automático pelo custo</span>':'<span class="pill p-mut">outro</span>';
+    const al=anyLink(m0.product_id);
+    return `<tr><td class="num">${al?`<a class="lnk any" href="${al}" target="_blank" rel="noopener">#${esc(m0.product_id)} ↗</a>`:esc(k)}</td><td>${modo}</td>
+      <td style="white-space:normal">${g.map(m=>`<div style="font-size:12px">${esc(m.ref)} · ${esc(platShort(m.marketplace))} ${esc(m.conta||'')} · ${BRL(m.preco)} ${stPill(m.st)}${m.alvo?` <span style="color:var(--mut)">alvo ${BRL(m.alvo)}</span>`:''}</div>`).join('')}</td>
+      <td style="font-size:11px;color:var(--mut)">${new Date(m0.em).toLocaleString('pt-BR')}</td>
+      <td><div class="simrow" style="margin:0"><button class="btn ghost modoInfo" data-oid="${m0.oid}">ver modo</button><input type="password" class="modoPw" placeholder="senha" style="width:76px"><button class="btn modoGo" data-oid="${m0.oid}">Converter p/ "por SKU e marketplace"</button></div><div class="modoRes" style="font-size:11px;margin-top:4px"></div></td></tr>`;}).join('')||'<tr><td colspan="5" class="emp">✓ Nenhuma oferta recusada pendente.</td></tr>';
+}
+async function confAplicar(list,pw,msgEl){
+  const itens=[];list.forEach(({x,preco})=>(x.offers||[]).forEach(o=>itens.push({offer_id:+o.oid,preco})));
+  const r=await fetch(FN+'/comando-preco',{method:'POST',headers:HJ,body:JSON.stringify({secret:SECRET,senha:pw,confirmar:true,origem:'conflito-cores',itens})});return await r.json();
+}
+document.addEventListener('click',async e=>{
+  const one=e.target.closest('.confUm'), many=e.target.closest('#confAplicar'), all=e.target.closest('#confAll'), mi=e.target.closest('.modoInfo'), mg=e.target.closest('.modoGo');
+  if(all){document.querySelectorAll('#tConf .confSel').forEach(c=>c.checked=all.checked);return;}
+  if(one||many){
+    const pw=document.getElementById('confPw').value;const gmsg=document.getElementById('confMsg');
+    if(!pw){gmsg.innerHTML='<span class="mg r">Digite a senha (campo ao lado do botão "Alinhar selecionados").</span>';return;}
+    const trs=one?[one.closest('tr')]:[...document.querySelectorAll('#tConf tbody tr')].filter(tr=>tr.querySelector('.confSel')&&tr.querySelector('.confSel').checked);
+    const list=trs.map(tr=>({tr,x:window._confRows[+tr.dataset.i],preco:+tr.querySelector('.confPreco').value})).filter(o=>o.x&&o.preco>0);
+    if(!list.length){gmsg.innerHTML='<span class="mg y">Nada selecionado.</span>';return;}
+    const nOff=list.reduce((a,o)=>a+(o.x.offers||[]).length,0);const abaixo=list.filter(o=>+o.x.be>0&&o.preco<+o.x.be).length;
+    if(!confirm(`Alinhar ${list.length} anúncio(s) ML (${nOff} ofertas no Anymarket) no preço informado?${abaixo?`\n\n⚠ ${abaixo} ficam ABAIXO do break-even.`:''}`))return;
+    const bt=one||many;bt.disabled=true;gmsg.textContent='aplicando…';
+    try{const d=await confAplicar(list,pw,gmsg);
+      if(d.error){gmsg.innerHTML='<span class="mg r">'+esc(d.error)+'</span>';}
+      else{const errIds=new Set((d.erros||[]).map(x=>+x.offer_id));
+        list.forEach(o=>{const res=o.tr.querySelector('.confRes');const bad=(o.x.offers||[]).filter(f=>errIds.has(+f.oid));res.innerHTML=bad.length?'<span class="mg r">'+bad.length+' recusada(s)</span>':'<span class="yes">✓ alinhado</span>';if(!bad.length){o.x.offers.forEach(f=>f.preco=o.preco);o.x.n_precos=1;}});
+        gmsg.innerHTML=`<span class="${d.erros_n?'mg y':'yes'}">HTTP ${esc(String(d.http))} · ${d.aplicados||0} oferta(s) aplicada(s)${d.erros_n?' · '+d.erros_n+' recusada(s) — veja "Recusados" abaixo (modo de preço)':''}.</span>`;
+        if(d.erros_n) loadConflitos();}
+    }catch(err){gmsg.innerHTML='<span class="mg r">falha de rede</span>';}
+    bt.disabled=false;return;
+  }
+  if(mi||mg){const td=(mi||mg).closest('td');const res=td.querySelector('.modoRes');const oid=+(mi||mg).dataset.oid;
+    if(mg){const pw=td.querySelector('.modoPw').value;if(!pw){res.innerHTML='<span class="mg r">Digite a senha.</span>';return;}if(!confirm('Converter este produto no Anymarket para "Manual por SKU e marketplace"?\nOs preços atuais das ofertas ficam como estão; depois disso o preço passa a ser definido canal a canal.'))return;}
+    (mi||mg).disabled=true;res.textContent=mg?'convertendo…':'consultando o Anymarket…';
+    try{const r=mg?await fetch(FN+'/comando-sku',{method:'POST',headers:HJ,body:JSON.stringify({secret:SECRET,acao:'modo_mkt',offer_id:oid,confirmar:true,senha:td.querySelector('.modoPw').value,origem:'painel-modo'})})
+                 :await fetch(FN+'/comando-sku?secret='+SECRET+'&acao=info&offer_id='+oid,{headers:HJ});
+      const d=await r.json();
+      if(d.error)res.innerHTML='<span class="mg r">'+esc(d.error)+'</span>';
+      else if(mi){const P=d.produto||{};res.innerHTML=`modo atual: <b>${esc(P.definitionPriceScope||'?')}</b>${P.definitionPriceScope==='SKU_MARKETPLACE'?' <span class="yes">✓ já ok</span>':''} · SKUs: ${(P.skus||[]).map(k=>esc(k.partnerId)+' '+BRL(k.price)).join(' · ')}`;}
+      else res.innerHTML=d.ok?`<span class="yes">✓ convertido (${esc(d.de)} → ${esc(d.depois)}). Agora use "Aprovar preço" normalmente.</span>`:(d.modo==='nada a fazer'?'<span class="yes">já está em SKU_MARKETPLACE</span>':`<span class="mg r">não converteu (HTTP ${esc(String(d.http))}, modo ${esc(String(d.depois))}): ${esc((d.resposta||'').slice(0,200))}</span>`);
+    }catch(err){res.innerHTML='<span class="mg r">falha de rede</span>';}
+    (mi||mg).disabled=false;return;}
+});
+document.getElementById('qconf').oninput=()=>drawConflitos();
+bindFilters("#conflitos .tag[data-fconf]",d=>fconf=d.fconf,drawConflitos);
+document.getElementById('xlConf').onclick=function(){const head=["Anúncio ML","Loja","Status","Título","Preço ML","Cores (ref preço)","Break-even","Alvo","Proposta","Regra"];const data=(window._confRows||[]).map(x=>{const pr=confProposta(x);return [x.lid,x.loja,x.ml_status,x.titulo,x.preco_ml,(x.offers||[]).map(o=>o.ref+' '+o.preco).join(' | '),x.be,x.alvo,pr.preco,pr.regra];});copyExcel(head,data,this);};
+
+/* ===== CADASTRO EM MASSA (dry-run + criar) ===== */
+let DRY=null;
+async function runDryrun(){
+  const info=document.getElementById('dryInfo'), out=document.getElementById('dryOut'), b=document.getElementById('btnDry');
+  b.disabled=true;info.textContent='preparando…';out.innerHTML='';
+  try{const r=await fetch(FN+'/comando-cadastro',{method:'POST',headers:HJ,body:JSON.stringify({secret:SECRET,acao:'dryrun'})});DRY=await r.json();}
+  catch(e){info.textContent='falha de rede';b.disabled=false;return;}
+  b.disabled=false;
+  if(DRY.error){info.textContent='erro: '+DRY.error;return;}
+  const rs=DRY.resumo||{};info.textContent=rs.prontos+' prontos de '+rs.candidatos+' candidatos';
+  const catRows=Object.entries(rs.por_categoria||{}).map(([k,v])=>`<div class="calcline"><span class="l">${esc(k)}</span><span class="v">${v}</span></div>`).join('');
+  const bi=rs.bloqueados_indiv||{};
+  const blqRows=[['sem foto',bi.sem_foto],['sem EAN',bi.sem_ean],['sem categoria/linha',bi.sem_categoria],['sem preço',bi.sem_preco]].filter(p=>p[1]).map(p=>`<div class="calcline"><span class="l">${p[0]}</span><span class="v">${p[1]}</span></div>`).join('');
+  const pl=DRY.amostra_payloads&&DRY.amostra_payloads[0];
+  out.innerHTML=`<div class="detr">
+    <div class="detcard"><h5 style="color:var(--ac)">Prontos p/ criar</h5><div class="num" style="font-weight:800;font-size:24px">${rs.prontos||0}</div><div style="font-size:11px;color:var(--mut)">de ${rs.candidatos||0} candidatos · ${rs.bloqueados||0} bloqueados</div>
+      <div style="font-size:10px;color:var(--mut);margin-top:4px">Cadastre cada um pelo botão 🏭 na linha do produto (fluxo Sankhya→Anymarket).</div></div>
+    <div class="detcard"><h5>Por categoria (prontos)</h5>${catRows||'<span class="emp">—</span>'}</div>
+    <div class="detcard"><h5>Bloqueados (motivo)</h5>${blqRows||'<span class="emp">—</span>'}</div>
+    ${pl?`<div class="detcard" style="max-width:360px"><h5>Exemplo do que será enviado</h5><pre style="font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0">${esc(JSON.stringify(pl,null,1))}</pre></div>`:''}
+  </div>`;
+}
+document.addEventListener('click',async e=>{
+  const g=e.target.closest('.dryGo'); if(!g) return;
+  const card=g.closest('.detcard'); const lim=+card.querySelector('.dryLim').value||1; const pw=card.querySelector('.dryPw').value;
+  if(!pw){alert('Informe a senha.');return;}
+  if(!confirm('Criar '+lim+' produto(s) no Anymarket agora? (grava de verdade)')) return;
+  g.disabled=true;g.textContent='criando…';
+  try{const r=await fetch(FN+'/comando-cadastro',{method:'POST',headers:HJ,body:JSON.stringify({secret:SECRET,acao:'criar',confirmar:true,senha:pw,limite:lim})});const d=await r.json();
+    if(d.error){g.textContent='Criar no Anymarket';g.disabled=false;alert('Erro: '+d.error);return;}
+    g.textContent='✓ '+d.criados+' criados'+(d.falhas?(' · '+d.falhas+' falhas'):'');
+    if(d.falhas&&d.resultados){const err=d.resultados.filter(x=>x.erro)[0];if(err)alert('Ex. de falha ('+err.ref+'): '+err.erro);}
+    DRY=null; setTimeout(runDryrun,1500);
+  }catch(err){g.disabled=false;g.textContent='Criar no Anymarket';alert('Falha de rede.');}
+});
+
+/* ===== CADASTRO via MCP (Sankhya -> Anymarket) ===== */
+let MCPM={};
+function mcpCores(d){return (d.skus||d.familia||d.variacoes||[]).map(s=>({codProd:s.codProd||s.cod_prod||s.CODPROD,ref:s.referencia||s.ref||s.REFERENCIA,cor:s.corNome||s.cor||s.descricaoCor||'',idCor:s.idCor||s.id_cor}));}
+document.addEventListener("click",async e=>{
+  const mb=e.target.closest(".mcpMontar");
+  if(mb){ const ref=mb.dataset.ref, busca=mb.dataset.busca; const out=mb.closest(".detcard").querySelector(".mcpOut");
+    mb.disabled=true;mb.textContent="montando…";out.innerHTML='<span class="emp" style="font-size:11px">consultando Sankhya…</span>';
+    try{const r=await fetch(FN+"/comando-mcp",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,acao:"montar",ref,busca,ambiente:"producao"})});const d=await r.json();
+      mb.disabled=false;mb.textContent="🏭 Cadastrar no Anymarket";
+      if(d.error){out.innerHTML='<span class="mg r" style="font-size:11px">'+esc(d.error)+'</span>';return;}
+      if(d.anuncioExistente){
+        const sa=d.sugestaoAdicionarCor||{}; const addCores=(sa.variacoes||sa.cores||d.deFora||[]).filter(cc=>cc&&(cc.codProd||cc.cod_prod));
+        if(!addCores.length){out.innerHTML='<span class="mg y" style="font-size:11px">Família já anunciada no Anymarket — nada a adicionar aqui.</span>';return;}
+        MCPM[ref]=d; const codAnun=sa.cod_prod_anuncio||(d.anuncioExistente&&(d.anuncioExistente.codProd||d.anuncioExistente.cod_prod))||d.codProdPai;
+        const linhas=addCores.map((cc,i)=>{const rf=cc.referencia||cc.ref;const alvo=((D.criar||[]).find(x=>x.ref===rf)||{}).preco_sugerido||0;return `<div class="calcline"><span class="l">${esc(rf||'')} ${esc(cc.cor||cc.corNome||'')}</span><span class="v"><input type="number" class="mcpPreco" data-cod="${esc(cc.codProd||cc.cod_prod)}" data-idcor="${esc(cc.idCor||cc.id_cor||'')}" step="0.01" value="${(+alvo||0).toFixed(2)}" style="width:74px"></span></div>`;}).join('');
+        out.innerHTML=`<div style="border:1px solid var(--con);border-radius:8px;padding:8px;margin-top:6px;background:rgba(227,133,59,.06)">
+          <div style="font-size:12px;color:var(--con)"><b>Família já anunciada</b> — adicionar cor(es) nova(s) ao anúncio existente:</div>${linhas}
+          <input type="hidden" class="mcpCodAnun" value="${esc(codAnun)}">
+          <div class="simrow" style="margin-top:8px"><input type="password" class="mcpPw" placeholder="senha" style="width:84px"><button class="btn mcpAddc" data-ref="${esc(ref)}">Adicionar cor + prévia</button></div>
+          <div class="mcpRes" style="margin-top:6px;font-size:12px"></div></div>`;
+        return;
+      }
+      if((d.candidatos&&d.candidatos.length)&&!d.tituloSugerido){out.innerHTML='<div class="emp" style="font-size:11px">Busca ambígua: '+d.candidatos.slice(0,6).map(c=>esc(c.descricao||c.cod_prod||'')).join(' · ')+' — refine.</div>';return;}
+      MCPM[ref]=d; const cores=mcpCores(d);
+      const linhas=cores.map((c,i)=>{const alvo=((D.criar||[]).find(cc=>cc.ref===c.ref)||{}).preco_sugerido||d.precoReferencia||0;return `<div class="calcline"><span class="l">${esc(c.ref||'')} ${esc(c.cor||'')}</span><span class="v"><input type="number" class="mcpPreco" data-i="${i}" step="0.01" value="${(+alvo||0).toFixed(2)}" style="width:74px"></span></div>`;}).join("");
+      out.innerHTML=`<div style="border:1px solid var(--bd);border-radius:8px;padding:8px;margin-top:6px">
+        <div class="calcline"><span class="l">Título</span><span class="v" style="font-weight:700;text-align:right;max-width:200px">${esc(d.tituloSugerido||'')}</span></div>
+        <div class="calcline"><span class="l">Categoria</span><span class="v">${esc(d.categoriaSugerida||'')} (id ${esc(d.idCategoriaSugerida)})</span></div>
+        <div style="font-size:11px;color:var(--mut);margin:4px 0">Cores + <b>preço-alvo</b> (editável):</div>${linhas||'<span class="emp">sem cores</span>'}
+        <div class="simrow" style="margin-top:8px"><input type="password" class="mcpPw" placeholder="senha" style="width:84px"><button class="btn mcpPrev" data-ref="${esc(ref)}">Cadastrar + prévia</button></div>
+        <div class="mcpRes" style="margin-top:6px;font-size:12px"></div></div>`;
+    }catch(err){mb.disabled=false;mb.textContent="🏭 Cadastrar no Anymarket";out.innerHTML='<span class="mg r" style="font-size:11px">falha de rede</span>';}
+    return;
+  }
+  const pv=e.target.closest(".mcpPrev");
+  if(pv){ const ref=pv.dataset.ref, d=MCPM[ref]; const box=pv.closest("div"); const res=pv.closest(".mcpOut").querySelector(".mcpRes"); const pw=pv.closest(".mcpOut").querySelector(".mcpPw").value;
+    if(!pw){alert("Informe a senha.");return;}
+    const cores=mcpCores(d); const precos=[...pv.closest(".mcpOut").querySelectorAll(".mcpPreco")];
+    const variacoes=cores.map((c,i)=>{const v={cod_prod:c.codProd,preco:+((precos[i]||{}).value)||0};if(cores.length>1&&c.idCor)v.id_cor=c.idCor;return v;});
+    pv.disabled=true;pv.textContent="cadastrando…";res.innerHTML='';
+    try{const r=await fetch(FN+"/comando-mcp",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,acao:"criar",senha:pw,ambiente:"producao",ref,cod_prod:(d._cod||d.codProdPai||(cores[0]&&cores[0].codProd)),titulo:d.tituloSugerido,descricao:d.descricaoSugerida,id_categoria:d.idCategoriaSugerida,variacoes,previa:true})});const o=await r.json();
+      pv.disabled=false;pv.textContent="Cadastrar + prévia";
+      if(o.error){res.innerHTML='<span class="mg r">'+esc(o.error)+'</span>';return;}
+      const cad=o.cadastro||{}; const probs=(cad.problemas||[]);
+      if(probs.length){res.innerHTML='<b class="mg r">Problemas:</b><br>'+probs.map(p=>esc(p)).join('<br>');return;}
+      res.innerHTML='<span class="yes">✓ Cadastrado no Sankhya · prévia OK</span> — revise e publique:'+
+        '<div class="simrow" style="margin-top:6px"><input type="password" class="mcpPw2" placeholder="senha" style="width:84px"><button class="btn mcpPub" data-ref="'+esc(ref)+'">Publicar no Anymarket ↑</button></div>';
+    }catch(err){pv.disabled=false;pv.textContent="Cadastrar + prévia";res.innerHTML='<span class="mg r">falha de rede</span>';}
+    return;
+  }
+  const ac=e.target.closest(".mcpAddc");
+  if(ac){ const ref=ac.dataset.ref; const box=ac.closest(".mcpOut"); const res=box.querySelector(".mcpRes"); const pw=box.querySelector(".mcpPw").value; const codAnun=box.querySelector(".mcpCodAnun").value;
+    if(!pw){alert("Informe a senha.");return;}
+    const precos=[...box.querySelectorAll(".mcpPreco")];
+    const variacoes=precos.map(inp=>{const v={cod_prod:+inp.dataset.cod,preco:+inp.value||0};if(inp.dataset.idcor)v.id_cor=+inp.dataset.idcor;return v;});
+    ac.disabled=true;ac.textContent="adicionando…";res.innerHTML='';
+    try{const r=await fetch(FN+"/comando-mcp",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,acao:"addcor",senha:pw,ambiente:"producao",cod_prod_anuncio:+codAnun,variacoes,previa:true})});const o=await r.json();
+      ac.disabled=false;ac.textContent="Adicionar cor + prévia";
+      if(o.error){res.innerHTML='<span class="mg r">'+esc(o.error)+'</span>';return;}
+      const ad=o.adicao||{}; const probs=(ad.problemas||[]);
+      if(probs.length){res.innerHTML='<b class="mg r">Problemas:</b><br>'+probs.map(p=>esc(p)).join('<br>');return;}
+      res.innerHTML='<span class="yes">✓ Cor(es) adicionada(s) · prévia OK</span><div class="simrow" style="margin-top:6px"><input type="password" class="mcpPw2" placeholder="senha" style="width:84px"><button class="btn mcpPub" data-ref="'+esc(ref)+'" data-cod="'+esc(codAnun)+'">Publicar cores novas ↑</button></div>';
+    }catch(err){ac.disabled=false;ac.textContent="Adicionar cor + prévia";res.innerHTML='<span class="mg r">falha de rede</span>';}
+    return;
+  }
+  const pb=e.target.closest(".mcpPub");
+  if(pb){ const ref=pb.dataset.ref, d=MCPM[ref]||{}; const cores=mcpCores(d); const pw=pb.closest(".simrow").querySelector(".mcpPw2").value;
+    if(!pw){alert("Informe a senha.");return;}
+    if(!confirm("Publicar no Anymarket (produção)? Sobe ATIVO.")) return;
+    const cod=pb.dataset.cod||d._cod||d.codProdPai||(cores[0]&&cores[0].codProd);
+    pb.disabled=true;pb.textContent="publicando…";
+    try{const r=await fetch(FN+"/comando-mcp",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,acao:"publicar",senha:pw,ambiente:"producao",cod_prod:cod,confirmar_pub:true})});const o=await r.json();
+      if(o.error){pb.disabled=false;pb.textContent="Publicar no Anymarket ↑";alert("Erro: "+o.error);return;}
+      if(o.publicado){pb.textContent="✓ Publicado (id "+(o.idAnymarket||'?')+")";}
+      else{pb.disabled=false;pb.textContent="Publicar no Anymarket ↑";alert((o.mensagemDoBotao||"não publicou").slice(0,300));}
+    }catch(err){pb.disabled=false;pb.textContent="Publicar no Anymarket ↑";alert("falha de rede");}
+    return;
+  }
+});
+
+/* ===== selects / init ===== */
+function fillSelect(id,opts,extra){const s=document.getElementById(id);const cur=s.value;s.innerHTML=(extra||'')+opts;s.value=cur;}
+function fillEmpSel(id){document.getElementById(id).innerHTML='<option value="">Todas as empresas</option>'+D.empresas.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");}
+function fillPlatAny(id){document.getElementById(id).innerHTML='<option value="">Todas as plataformas</option>'+[...new Set(D.canais_disponiveis.map(c=>c.marketplace))].map(mp=>`<option value="${esc(mp)}">${esc(platShort(mp))}</option>`).join("");}
+
+/* ===== eventos ===== */
+document.getElementById("tabs").addEventListener("click",e=>{const t=e.target.closest(".tab");if(!t)return;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));["prec","cm","criar","rev","conc","vendas","catalogo","conflitos","taxas"].forEach(id=>document.getElementById(id).classList.toggle("hide",id!==t.dataset.t));if(t.dataset.t==='catalogo'&&!CT)loadCatalogo();if(t.dataset.t==='conflitos'&&!CF)loadConflitos();});
+function bindFilters(sel,setter,getter){document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{document.querySelectorAll(sel).forEach(x=>x.classList.remove("on"));b.classList.add("on");setter(b.dataset);getter();});}
+bindFilters("#prec .tag[data-f]",d=>fP=d.f,drawPrec);
+bindFilters("#conc .tag[data-fco]",d=>fco=d.fco,drawConc);
+bindFilters("#vendas .tag[data-fv]",d=>fv=d.fv,renderVendasTable);
+["q","qcm","qc","qr","qco"].forEach(id=>{document.getElementById(id).oninput=()=>({q:drawPrec,qcm:drawCM,qc:drawCriar,qr:drawRev,qco:drawConc}[id])();});
+document.querySelector("#tP thead").addEventListener("click",e=>{const th=e.target.closest("th.sortable");if(!th||e.target.closest("select"))return;const k=th.dataset.sk;if(k===spK)spD=-spD;else{spK=k;spD=-1;}drawPrec();});
+document.querySelector("#tP thead").addEventListener("change",e=>{const s=e.target.closest("select.colf");if(!s)return;colF[s.dataset.col]=s.value;drawPrec();});
+document.querySelector("#tCM thead").addEventListener("click",e=>{const th=e.target.closest("th.sortable");if(!th)return;const k=th.dataset.sk;if(k===cmSK)cmSD=-cmSD;else{cmSK=k;cmSD=(k==='ref'||k==='empresa'||k==='st')?1:-1;}drawCM();});
+document.getElementById("qv").oninput=renderVendasTable;
+bindFilters("#catalogo .tag[data-fcat]",d=>fcat=d.fcat,drawCatTable);
+document.getElementById("qcat").oninput=drawCatTable;
+document.getElementById("btnDry").onclick=runDryrun;
+// Vendas: período rápido (seta datas e recarrega)
+document.querySelectorAll('#vendas .tag[data-per]').forEach(b=>b.onclick=function(){
+  document.querySelectorAll('#vendas .tag[data-per]').forEach(x=>x.classList.remove('on'));this.classList.add('on');
+  const d=+this.dataset.per; const de=document.getElementById('vDe'),ate=document.getElementById('vAte');
+  if(d>0){const dt=new Date(Date.now()-d*86400000);de.value=dt.toISOString().slice(0,10);ate.value=new Date().toISOString().slice(0,10);}else{de.value='';ate.value='';}
+  loadVendas();
+});
+["vMp","vEmp","vCat"].forEach(id=>document.getElementById(id).onchange=loadVendas);
+["vDe","vAte"].forEach(id=>document.getElementById(id).onchange=function(){document.querySelectorAll('#vendas .tag[data-per]').forEach(x=>x.classList.remove('on'));loadVendas();});
+document.getElementById("cmEmp").onchange=drawCM;document.getElementById("cmPlat").onchange=drawCM;
+bindFilters("#cm .tag[data-fcm]",d=>fcm=d.fcm,drawCM);
+fetch(FN+"/comando-alertas?secret="+SECRET,{headers:HJ}).then(r=>r.json()).then(d=>{AL=d.alertas||{};if(typeof drawCM==='function'&&D)drawCM();}).catch(()=>{});
+bindFilters("#criar .tag[data-fc2]",d=>fc2=d.fc2,drawCriar);
+document.getElementById("xlCriar").onclick=function(){const head=["Ref","Título","Categoria","Preço sug.","Estoque CD disp.","Físico","Reservado","EAN","Pronto"];const data=(window._criarRows||D.criar).map(x=>[x.ref,x.titulo||x.descrprod,x.categoria_nome,x.preco_sugerido,x.disp!=null?x.disp:x.estoque_disp,x.estoque_cd,x.reservado,x.ean||"",criarPronto(x)?"sim":"não"]);copyExcel(head,data,this);};
+document.getElementById("fEmp").onchange=function(){fEmp=this.value;drawConc();};
+document.getElementById("fPlat").onchange=function(){fPlat=this.value;drawConc();};
+document.getElementById("verTodas").onclick=function(){verTodas=!verTodas;this.textContent=(verTodas?"▾ mostrar só principais":"▸ ver todas as plataformas (148)");renderMatriz();};
+function bindAcc(sel){document.querySelector(sel).addEventListener("click",e=>{const tr=e.target.closest("tr.click");if(!tr||e.target.closest("a")||e.target.closest("button")||e.target.closest("input"))return;const det=tr.nextElementSibling;if(det&&det.classList.contains("detrow"))det.hidden=!det.hidden;});}
+["#tP","#tCM","#tCo","#tblRev","#tV","#tCat","#tCriar"].forEach(bindAcc);
+
+// simulador + aprovar(senha) dentro das linhas de precificação e canais
+document.addEventListener("input",e=>{const sr=e.target.closest(".simrow");if(!sr||!e.target.matches(".siCusto,.siFrete,.siMarg"))return;
+  const custo=+sr.querySelector(".siCusto").value||0, frete=+sr.querySelector(".siFrete").value||0, m=Math.min(74,Math.max(0,+sr.querySelector(".siMarg").value||0))/100;
+  const plat=sr.dataset.plat, imp=+sr.dataset.imp, emb=+sr.dataset.emb, credita=sr.dataset.credita==='1';
+  const baseC=credita?custo*(1-imp):custo; let com,fixa;
+  if(/SH|SHOPEE/i.test(plat)){let p=(baseC+frete+emb)/(1-0.14-imp-m);const b=shBand(p);com=+b.comissao_pct/100;fixa=+b.taxa_fixa;}
+  else{com=(+sr.dataset.preco>0)?(+sr.dataset.fee/+sr.dataset.preco):0.13;fixa=0;}
+  const novo=(baseC+frete+emb+fixa)/(1-com-imp-m);
+  sr.querySelector(".novo").textContent=BRL(novo);});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest(".aprovar");if(b){
+    const card=b.closest(".detcard");let box=card.querySelector(".aprovebox");if(box){box.remove();b.textContent="Aprovar preço";return;}
+    const oid=b.dataset.oid,ref=b.dataset.ref,emp=b.dataset.emp,plat=b.dataset.plat,alvo=b.dataset.alvo;let oids=[];try{oids=b.dataset.oids?JSON.parse(b.dataset.oids):[];}catch(_){}
+    box=document.createElement("div");box.className="aprovebox";
+    if(!oid){box.innerHTML='<b class="mg y">Sem offer_id do Anymarket</b> — anúncio fora do hub; vincule no Anymarket antes.';}
+    else{box.innerHTML=`<div class="calcline"><span class="l">${esc(ref)} · ${esc(emp)} · ${esc(plat)} · offer ${esc(oid)}</span></div>
+      ${oids.length>1?`<div style="font-size:11px;margin:4px 0;color:var(--con)">⚠ Este anúncio ML tem <b>${oids.length} ofertas/cores</b> no Anymarket (${oids.map(o=>esc(o.ref)+' '+BRL(o.preco)).join(' · ')}). No ML o anúncio tem <b>um só preço</b>.<br><label><input type="checkbox" class="todasCores" checked data-oids="${esc(JSON.stringify(oids.map(o=>o.oid)))}"> aplicar o mesmo preço em todas as cores (recomendado — evita conflito)</label></div>`:''}
+      <div class="simrow"><span class="l" style="color:var(--mut)">preço novo R$</span><input type="number" class="precoNovo" step="0.01" value="${esc(alvo)}"><span class="l" style="color:var(--mut)">senha</span><input type="password" class="pwin" placeholder="senha"><button class="btn confirmar" data-oid="${oid}">Aplicar via Anymarket</button></div>
+      <div class="msgp" style="font-size:11px;color:var(--mut);margin-top:5px">O preço é publicado no marketplace via Anymarket. Só quem tem a senha aplica.</div>`;}
+    card.appendChild(box);b.textContent="Fechar";return;
+  }
+  const cf=e.target.closest(".confirmar");if(cf){
+    const box=cf.closest(".aprovebox");const senha=box.querySelector(".pwin").value;const preco=+box.querySelector(".precoNovo").value;const msg=box.querySelector(".msgp");
+    if(!senha){msg.innerHTML='<span class="mg r">Digite a senha.</span>';return;}
+    if(!(preco>0)){msg.innerHTML='<span class="mg r">Preço inválido.</span>';return;}
+    msg.innerHTML='Aplicando…';cf.disabled=true;
+    const tc=box.querySelector(".todasCores");const ids=(tc&&tc.checked)?JSON.parse(tc.dataset.oids):[+cf.dataset.oid];
+    try{const r=await fetch(FN+"/comando-preco",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,senha,confirmar:true,origem:ids.length>1?"painel-cores":"painel",itens:ids.map(id=>({offer_id:+id,preco}))})});const d=await r.json();
+      if(d.error){msg.innerHTML='<span class="mg r">'+esc(d.error)+'</span>';}
+      else if(d.http>=200&&d.http<300&&!(d.erros_n>0)){msg.innerHTML='<span class="yes">✓ aplicado no Anymarket ('+esc(String(d.http))+(ids.length>1?' · '+ids.length+' ofertas':'')+'). Propaga ao marketplace em instantes.</span>';}
+      else if(d.erros_n>0){msg.innerHTML='<span class="mg y">'+(d.aplicados||0)+' aplicada(s), '+d.erros_n+' recusada(s): '+esc((d.erros||[]).map(x=>x.referencia+': '+x.msg).join(' | ').slice(0,300))+'</span>'+((d.erros||[]).some(x=>/Manual por SKU|pelo custo/i.test(x.msg||''))?'<div style="margin-top:4px">→ resolva o modo de preço na aba <b>⚠️ Conflitos</b>.</div>':'');}
+      else{msg.innerHTML='<span class="mg y">Anymarket respondeu '+esc(String(d.http))+': '+esc(d.resposta||'')+'</span>';}
+    }catch(err){msg.innerHTML='<span class="mg r">Falha: '+esc(err.message)+'</span>';}
+    cf.disabled=false;return;
+  }
+  const ia=e.target.closest(".ia");if(ia){
+    const ref=ia.dataset.ref,detr=ia.closest(".detr");let box=detr.querySelector(".iacard");
+    if(box){box.remove();return;}
+    ia.textContent="⏳ analisando…";ia.disabled=true;
+    try{const r=await fetch(FN+"/comando-ia",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,ref})});const d=await r.json();
+      box=document.createElement("div");box.className="detcard iacard";box.style.minWidth="320px";box.style.maxWidth="420px";
+      const alAny=anyLink(d.product_id);
+      box.innerHTML='<h5 style="color:var(--ac)">🧠 Análise IA — '+esc(ref)+(d.cache?' (cache)':'')+'</h5><div style="font-size:12px;white-space:pre-wrap;line-height:1.5">'+esc(d.analise||d.error||'sem resposta')+'</div>'+(alAny?'<div class="links" style="margin-top:8px"><a class="lnk any" href="'+alAny+'" target="_blank" rel="noopener">abrir no Anymarket p/ aplicar ↗</a></div>':'');
+      detr.appendChild(box);
+    }catch(err){alert&&0;}
+    ia.textContent="🧠 Análise IA";ia.disabled=false;return;
+  }
+  const im=e.target.closest(".img");if(im){
+    const ref=im.dataset.ref,detr=im.closest(".detr");let box=detr.querySelector(".imgcard");
+    if(box){box.remove();im.textContent="🖼️ Gerar imagem";return;}
+    box=document.createElement("div");box.className="detcard imgcard";box.style.minWidth="320px";box.style.maxWidth="440px";
+    box.innerHTML='<h5 style="color:var(--con)">🖼️ Gerar imagem — '+esc(ref)+'</h5>'+
+      '<div style="font-size:11px;color:var(--mut);margin-bottom:6px">Suba a imagem base (a exata que você quer trabalhar) ou deixe vazio p/ usar a foto do produto. Depois descreva o que acrescentar — a IA mantém o produto fiel e só adiciona o pedido.</div>'+
+      '<div style="margin:4px 0;font-size:11px"><b>Imagem base:</b> <input type="file" class="imgFile" accept="image/*" style="font-size:11px"> <span style="color:var(--mut)">(vazio = foto do produto)</span></div>'+
+      '<div class="imgPrev"></div>'+
+      '<textarea class="imgInstr" rows="3" style="width:100%;background:rgba(255,255,255,.04);color:inherit;border:1px solid var(--bd);border-radius:6px;padding:6px;font:inherit" placeholder="Ex.: acrescentar cotas de medidas: altura 60cm, largura 30cm, profundidade 37cm; fundo branco de catálogo"></textarea>'+
+      '<div class="simrow" style="margin-top:6px"><select class="imgSize"><option value="1024x1024">Quadrada 1:1</option><option value="1024x1536">Retrato 2:3</option><option value="1536x1024">Paisagem 3:2</option></select><label style="font-size:11px;color:var(--mut)"><input type="checkbox" class="imgFid" checked> preservar produto</label><button class="btn imgGo">Gerar imagem</button></div>'+
+      '<div class="imgOut" style="margin-top:8px"></div>';
+    detr.appendChild(box);im.textContent="Fechar";return;
+  }
+  const go=e.target.closest(".imgGo");if(go){
+    const box=go.closest(".imgcard");const im2=box.parentElement.querySelector(".img");const ref=im2&&im2.dataset.ref;const titulo=(im2&&im2.dataset.titulo)||'';
+    const instrucao=box.querySelector(".imgInstr").value.trim();const size=box.querySelector(".imgSize").value;const out=box.querySelector(".imgOut");
+    const fidelity=box.querySelector(".imgFid").checked?'high':'low';
+    let img_b64=null,img_mime=null;const file=box.querySelector(".imgFile").files[0];
+    if(file){const buf=await file.arrayBuffer();const by=new Uint8Array(buf);let bin='';const ch=0x8000;for(let i=0;i<by.length;i+=ch)bin+=String.fromCharCode.apply(null,by.subarray(i,i+ch));img_b64=btoa(bin);img_mime=file.type||'image/png';}
+    go.disabled=true;go.textContent="⏳ gerando…";out.innerHTML='<span class="emp" style="font-size:11px">A IA está desenhando… pode levar ~30-40s.</span>';
+    try{const r=await fetch(FN+"/comando-imagem",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,ref,titulo,instrucao,size,fidelity,img_b64,img_mime})});const d=await r.json();
+      if(d.ok&&d.b64){const src='data:image/png;base64,'+d.b64;out.innerHTML='<img src="'+src+'" style="width:100%;border-radius:8px;background:#fff"><div class="links" style="margin-top:6px"><a class="lnk" href="'+src+'" download="'+esc(ref)+'-nova.png">baixar PNG ↗</a> <span style="font-size:10px;color:var(--mut)">baixe e suba no Anymarket</span></div>';}
+      else out.innerHTML='<span class="mg r" style="font-size:11px">Erro: '+esc(d.error||'sem imagem')+(d.detalhe?' — '+esc(d.detalhe):'')+'</span>';
+    }catch(err){out.innerHTML='<span class="mg r" style="font-size:11px">Falha de rede.</span>';}
+    go.disabled=false;go.textContent="Gerar outra";return;
+  }
+});
+
+// frete grátis ML (verificar ao vivo / desligar <R$79)
+document.addEventListener("click",async e=>{
+  const fv=e.target.closest(".freteVer"), fo=e.target.closest(".freteOff"); if(!fv&&!fo) return;
+  const box=(fv||fo).closest(".fretebox"); const lid=box.dataset.lid; const msg=box.querySelector(".freteMsg"); const bt=fv||fo;
+  if(fo){ const pw=box.querySelector(".pwFrete").value; if(!pw){msg.innerHTML='<span class="mg r">Digite a senha.</span>';return;}
+    if(!confirm('Desligar o frete grátis de '+lid+' no Mercado Livre? (o comprador passa a pagar o frete)')) return; }
+  bt.disabled=true; msg.textContent=fv?'consultando o ML…':'aplicando…';
+  try{
+    const r=fv?await fetch(FN+"/ml-frete?secret="+SECRET+"&acao=verificar&lid="+encodeURIComponent(lid),{headers:HJ})
+              :await fetch(FN+"/ml-frete",{method:"POST",headers:HJ,body:JSON.stringify({secret:SECRET,acao:"desligar",lid,confirmar:true,senha:box.querySelector(".pwFrete").value,origem:"painel"})});
+    const d=await r.json();
+    if(d.error) msg.innerHTML='<span class="mg r">'+esc(d.error)+'</span>';
+    else if(fv) msg.innerHTML=`ao vivo: <b>${BRL(d.preco)}</b> · frete grátis <b>${d.free_shipping?'SIM':'não'}</b> · ${esc(d.status||'')} · ${esc(d.logistic||'')}${d.elegivel?' · <span class="mg y">pode desligar</span>':''}`;
+    else if(d.modo==='nada a fazer') msg.innerHTML='<span class="yes">'+esc(d.msg||'já desligado')+'</span>';
+    else msg.innerHTML=d.ok?'<span class="yes">✓ frete grátis desligado no ML. Se o Anymarket religar na próxima sincronização, ajuste a regra de frete do produto no hub.</span>':'<span class="mg r">ML respondeu '+esc(String(d.http))+': '+esc(d.resposta||'')+'</span>';
+  }catch(err){ msg.innerHTML='<span class="mg r">falha de rede</span>'; }
+  bt.disabled=false;
+});
+
+// export
+document.getElementById("xlPrec").onclick=function(){const head=["Ref","Categoria","Empresa","Plataforma","Título","Preço","Custo cheio","Crédito entrada","Custo NET","Comissão","Taxa fixa","Imposto saída","Frete","Margem","Alvo"];const data=(window._prRows||prFiltered()).map(r=>{const m=memoria(r);return [r.ref,r.linha,r.empresa,platShort(r.plat),r.titulo,m.P,m.Cbase,m.credito,m.NET,m.comValor,m.fixa,m.imposto,m.frete,m.margem,m.alvo];});copyExcel(head,data,this);};
+document.getElementById("xlCM").onclick=function(){const cols=cmCols();const RM=refMgMap();const head=["Ref","Descrição","Pior margem",...cols.map(c=>platShort(c.marketplace)+" "+c.empresa),"Conc mín","Conc máx","Ofertas","vs menor %","Vendas 30d"];const data=(window._cmRows||[]).map(g=>{const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');m2[ch.marketplace+'|'+e]=ch;});const o=cmOurMin(g);const vs=(o!=null&&g.conc&&+g.conc.min>0)?+(((o-+g.conc.min)/+g.conc.min)*100).toFixed(1):"";const mm=RM[g.ref];return [g.ref,g.descr,mm?mm.min:"",...cols.map(c=>{const ch=m2[c.marketplace+'|'+c.empresa];return ch?ch.preco:"";}),g.conc?g.conc.min:"",g.conc?g.conc.max:"",g.conc?g.conc.ofertas:"",vs,cmV30(g.ref)||""];});copyExcel(head,data,this);};
+document.getElementById("xlR").onclick=function(){copyExcel(["Revendedor","Marketplace","Anúncios","CNPJ","Razão social","Município","UF"],D.revendedores.map(x=>[x.seller_nick,x.marketplace,x.n_anuncios,x.cnpj_digitos,x.razao_social,x.municipio,x.uf]),this);};
+document.getElementById("xlCo").onclick=function(){const cols=concCols();const head=["Ref","Descrição","Tabela Sankhya",...cols.map(c=>platShort(c.mp)+" "+c.emp),"Preço div min","Preço div max","Custo","Estoque"];const data=(window._concRows||concFiltered()).map(x=>{const pd=precoDiv(x);return [x.ref,x.descricao,x.na_155?"sim":"não",...cols.map(c=>{const k=c.mp+'|'+c.emp;const a=(x.any_canais&&x.any_canais[k])||0;const r=c.mp==='MERCADO_LIVRE'?((x.real_canais&&x.real_canais[k])||0):'';return `any:${a}${c.mp==='MERCADO_LIVRE'?' real:'+r:''}`;}),pd?pd.mn:"",pd?pd.mx:"",x.custo_final,x.estoque];});copyExcel(head,data,this);};
+document.getElementById("xlCat").onclick=function(){const head=["Ref","Descrição","EAN","Catálogo","Clássico","Dono do catálogo","Nosso menor","Conc menor","Ação","Estoque CD"];const data=(window._catRows||catFiltered()).map(x=>[x.ref,x.descr,x.tem_ean?"sim":"não",x.cat,x.classico,x.dono,x.our_cat_min,x.comp_min,x.acao,x.disp]);copyExcel(head,data,this);};
+document.getElementById("xlV").onclick=function(){const L=vendCross();const head=["Ref","Descrição","ABC","Qtd vendida","Receita","% receita","Qtd ML","Qtd Shopee","Qtd Nitron","Qtd Mundo UD","Pedidos","Última venda","Anúncio no hub","Conc min"];const data=(window._vRows||vendFiltered(L)).map(x=>{const e=L[x.ref]||{};const temAny=(e.canais&&e.canais.length)||(e.any&&e.any>0);return [x.ref,x.descr,x.classe,x.qtd,x.receita,(+x.pct||0).toFixed(1),x.qtd_ml,x.qtd_shopee,x.qtd_nitron,x.qtd_mundoud,x.pedidos,(x.ultima||'').slice(0,10),temAny?"sim":"não",e.compMin||(e.conc&&e.conc.min)||""];});copyExcel(head,data,this);};
+
+function fillLinhaSel(id){document.getElementById(id).innerHTML='<option value="">Todas as categorias</option>'+(D.linhas||[]).map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join("");}
+function renderTaxas(){
+  const princ=D.plataformas.filter(p=>p.principal);
+  const confSet=new Set((D.config||[]).map(c=>c.plataforma));
+  let h=`<div class="matgrid">`;
+  // ML
+  h+=`<div class="detcard" style="min-width:300px"><h5 class="mk-ML">Mercado Livre — real da API</h5>
+    <div class="calcline"><span class="l">Comissão clássico</span><span class="v">~11–14%</span></div>
+    <div class="calcline"><span class="l">Comissão premium</span><span class="v">~16–18%</span></div>
+    <div class="calcline"><span class="l">Custo fixo por unidade</span><span class="v">R$ 6,50 (itens &lt; R$79) · R$ 0 acima</span></div>
+    <div class="calcline"><span class="l">Frete</span><span class="v">grátis p/ vendedor só se free_shipping</span></div>
+    <div style="font-size:11px;color:var(--mut);margin-top:6px">Puxado por anúncio via /listing_prices e /shipping_options — não é estimativa.</div></div>`;
+  // Shopee
+  h+=`<div class="detcard" style="min-width:300px"><h5 class="mk-SH">Shopee — tabela por faixa</h5>
+    <table style="font-size:12px"><thead><tr><th>Faixa (R$)</th><th class="r">Comissão</th><th class="r">Taxa fixa</th></tr></thead><tbody>
+    ${(D.taxa_shopee||[]).map(t=>`<tr><td>${(+t.valor_min).toFixed(0)}–${(+t.valor_max>9000?'+':(+t.valor_max).toFixed(0))}</td><td class="r">${t.comissao_pct}%</td><td class="r">R$ ${(+t.taxa_fixa).toFixed(0)}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  // regimes
+  h+=`<div class="detcard" style="min-width:260px"><h5>Imposto por regime (empresa)</h5>
+    ${(D.config||[]).filter(c=>c.plataforma==='ML').map(c=>`<div class="calcline"><span class="l">${esc(c.loja)} (${esc(c.regime)})</span><span class="v">${PCT(+c.imposto_pct)}${c.custo_liquido?' · credita entrada':''}</span></div>`).join("")}
+    <div class="calcline"><span class="l">Embalagem</span><span class="v">R$ 3,00</span></div>
+    <div class="calcline"><span class="l">Margem-alvo padrão</span><span class="v">20%</span></div></div>`;
+  h+=`</div><h3 style="font-size:14px;margin:14px 0 8px">Plataformas do Anymarket</h3><div class="matgrid">`;
+  princ.forEach(p=>{const ok=p.code==='MERCADO_LIVRE'||p.code==='SHOPEE';h+=`<div class="chn ${ok?'':'off'}" style="${ok?'':'border-style:dashed;border-color:var(--warn)'}"><div class="cl">${esc(p.nome)}</div><div style="font-size:12px;color:${ok?'var(--ok)':'var(--warn)'}">${ok?'regra cadastrada ✓':'regra a cadastrar'}</div></div>`;});
+  h+=`</div><div class="note" style="margin-top:12px">Para precificar TikTok, Amazon, Magalu etc., cadastre a regra de taxa de cada uma (comissão + taxa fixa/frete) — me avise que eu crio a tabela e ligo no cálculo, igual à Shopee.</div>`;
+  document.getElementById("taxasBody").innerHTML=h;
+}
+HFDRAW.conc=()=>drawConc();HFDRAW.rev=()=>drawRev();HFDRAW.cat=()=>drawCatTable();HFDRAW.criar=()=>drawCriar();HFDRAW.conf=()=>drawConflitos();
+function initAll(){
+  buildPR();
+  fillEmpSel("cmEmp");fillEmpSel("fEmp");
+  fillLinhaSel("pLinha");fillLinhaSel("cmLinha");fillLinhaSel("coLinha");
+  fillPlatAny("cmPlat");
+  document.getElementById("fPlat").innerHTML='<option value="">Todas as plataformas</option>'+D.plataformas.map(p=>`<option value="${esc(p.code)}">${esc(p.nome)}${p.principal?'':' (a integrar)'}</option>`).join("");
+  document.getElementById("pLinha").onchange=drawPrec;document.getElementById("cmLinha").onchange=drawCM;document.getElementById("coLinha").onchange=drawConc;
+  renderStats();renderMatriz();renderTaxas();drawPrec();drawCM();drawCriar();drawRev();drawConc();drawVendas();
+}
+async function load(){
+  document.getElementById("stats").innerHTML='<div class="emp">Carregando dados ao vivo…</div>';
+  try{
+    const r=await fetch(FN+"/comando-dados?secret="+SECRET,{headers:HJ});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    D=await r.json(); if(D.error) throw new Error(D.error);
+    initAll();
+  }catch(e){ document.getElementById("stats").innerHTML='<div class="emp" style="color:var(--bad)">Falha ao carregar: '+esc(e.message)+'. Recarregue a página.</div>'; }
+}
+document.getElementById("refreshBtn")&&(document.getElementById("refreshBtn").onclick=load);
+load();
+</script>
