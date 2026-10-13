@@ -285,6 +285,7 @@ const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;
 const mgCls=m=>m==null?"":m>=0.2?"mok":m>=0.08?"mwarn":"mbad";
 const norm=s=>(s==null?"":s.toString()).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[.\s\/_\-]/g,"");
 const stNorm=s=>{if(!s)return"";const l=(""+s).toLowerCase();return (l==="active"||l==="ativo"||l.startsWith("ativo -"))?"ativo":l.includes("paus")?"pausado":(l.includes("review")||l.includes("revis"))?"revisao":(l.includes("estoque"))?"semestoque":(l.includes("banid")||l.includes("banned"))?"banido":(l.includes("exclu")||l.includes("delet")||l==="closed")?"excluido":(l.includes("não publicado")||l.includes("unpublished"))?"naopub":"outro";};
+const stLabel=x=>({ativo:'ativo',pausado:'pausado',revisao:'em revisão',semestoque:'sem estoque',banido:'banido',excluido:'excluído',naopub:'não publicado'})[stNorm(x)]||String(x||'inativo').toLowerCase();
 const estBadge=d=>{if(d==null)return '<span class="no">—</span>';d=Math.round(+d);if(d<=0)return '<span class="pill p-bad">⛔ sem estoque</span>';if(d<200)return '<span class="pill p-warn">'+d+'</span>';return '<span class="num">'+d+'</span>';};
 const stPill=s=>{const n=stNorm(s);if(!s)return '<span class="no">—</span>';if(n==="ativo")return '<span class="pill" style="background:rgba(47,184,107,.18);color:var(--ok)">● ativo</span>';if(n==="pausado")return '<span class="pill" style="background:rgba(224,166,59,.20);color:var(--warn)">⏸ pausado</span>';if(n==="revisao")return '<span class="pill p-mut">🔎 revisão</span>';if(n==="semestoque")return '<span class="pill p-mut">sem estoque</span>';if(n==="banido")return '<span class="pill" style="background:rgba(248,81,73,.18);color:var(--bad)">⛔ banido</span>';if(n==="excluido")return '<span class="pill" style="background:rgba(248,81,73,.12);color:var(--bad)">✖ excluído</span>';if(n==="naopub")return '<span class="pill p-mut">não publicado</span>';return '<span class="pill p-mut">'+esc(s)+'</span>';};
 const platNome=code=>{const p=(D.plataformas||[]).find(x=>x.code===code);return p?p.nome:code;};
@@ -366,6 +367,8 @@ function margemEm(row,price){const cf=cfgOf(row.empresa,row.plat);const imp=+cf.
 // Especialista embarcado (regras de marketplace/precificação/estratégia)
 function especialista(row){
   const m=memoria(row);const tips=[];
+  if(row.st&&stNorm(row.st)!=='ativo') tips.push(["warn",`Anúncio <b>${esc(stLabel(row.st))}</b> — não aparece para o cliente, então hoje <b>não está competindo</b>. A comparação com a concorrência abaixo só vale se reativar.`]);
+  if(!row.oid&&!row.product_id) tips.push(["warn","Fora do Anymarket: sem produto/oferta no hub — o preço só muda direto no marketplace (editar ↗) ou cadastrando no Anymarket."]);
   if(m.Cbase<=0) tips.push(["warn","Sem custo na tabela Sankhya — defina o custo manual abaixo (item fora da tabela / kit montado no Anymarket) para o cálculo valer."]);
   if(m.margem!=null&&m.margem<0) tips.push(["bad",`No prejuízo (margem ${PCT(m.margem)}). Subir para ≥ break-even ${BRL(m.be)} ou rever custo.`]);
   else if(m.margem!=null&&m.margem<m.malvo) tips.push(["warn",`Margem ${PCT(m.margem)} abaixo do alvo ${PCT(m.malvo)}. Preço-alvo = ${BRL(m.alvo)}.`]);
@@ -518,7 +521,7 @@ function pricingCardHtml(r){
       <span style="color:var(--mut)">frete</span><input type="number" class="siFrete" step="0.01" value="${(+r.frete||0).toFixed(2)}">
       <span style="color:var(--mut)">margem</span><input type="number" class="siMarg" value="20" min="0" max="75">%
       → <span class="novo num" style="font-weight:800;color:var(--ac)">${BRL(m.alvo)}</span></div>
-    <div class="links">${r.link?`<a class="lnk" href="${esc(r.link)}" target="_blank" rel="noopener">ver ↗</a>`:""}${r.lid?`<a class="lnk" href="${mlEdit(r.lid)}" target="_blank" rel="noopener">editar ↗</a>`:""}${al?`<a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:""}
+    <div class="links">${r.link?`<a class="lnk" href="${esc(r.link)}" target="_blank" rel="noopener">ver ↗</a>`:(r.plat==='ML'&&r.lid?`<a class="lnk" href="${mlUrl(r.lid)}" target="_blank" rel="noopener">ver ↗</a>`:"")}${r.lid?`<a class="lnk" href="${mlEdit(r.lid)}" target="_blank" rel="noopener">editar ↗</a>`:""}${al?`<a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:`<span class="pill" style="background:rgba(227,133,59,.16);color:var(--con)" title="Esta referência não existe no Anymarket (sem produto/oferta no hub) — o preço só pode ser ajustado direto no marketplace (editar ↗) ou cadastrando o produto no Anymarket.">fora do Anymarket</span>`}
       <button class="btn aprovar" data-oid="${r.oid||''}" data-oids="${r.oids&&r.oids.length>1?esc(JSON.stringify(r.oids)):''}" data-ref="${esc(r.ref)}" data-emp="${esc(r.empresa)}" data-plat="${platShort(r.plat)}" data-alvo="${(m.alvo||0).toFixed(2)}">Aprovar preço</button></div>
     ${r.plat==='ML'&&r.lid?freteBox(r):''}
   </div>`;
@@ -532,13 +535,23 @@ function comparativoCard(g){
   const catBlocks=Object.keys(cats).map(cid=>{
     const arr=cats[cid].slice().sort((a,b)=>a.preco-b.preco); const dono=arr[0]; const temNitron=arr.some(o=>o.eh_nitron);
     const tag=dono.eh_nitron?'<span class="yes">NITRON é a dona ✓</span>':(temNitron?'<span class="mg r">concorrente ganhando ⚠</span>':'<span class="mg r">catálogo de concorrente — Nitron ausente ⚠</span>');
-    return `<div class="calcline"><span class="l">Catálogo ${tag}</span><span class="v">dono: ${esc((dono.seller||'?').slice(0,16))}${dono.oficial?' ⭐':''} ${BRL(dono.preco)}</span></div>`;
+    const nossa=arr.find(o=>o.eh_nitron);
+    const prML=PR.filter(r=>r.ref===g.ref&&r.plat==='ML'&&+r.preco>0);
+    const atvMin=prML.filter(r=>stNorm(r.st)==='ativo').sort((a,b)=>a.preco-b.preco)[0];
+    const pausMin=prML.filter(r=>stNorm(r.st)!=='ativo'&&+r.preco<+dono.preco).sort((a,b)=>a.preco-b.preco)[0];
+    let obs='';
+    if(!dono.eh_nitron&&nossa) obs+=`<div style="font-size:11px;color:var(--mut)">nossa oferta neste catálogo: ${esc((nossa.seller||'').slice(0,16))} <b>${BRL(nossa.preco)}</b> (+${BRL(nossa.preco-dono.preco)} vs dono)</div>`;
+    if(!dono.eh_nitron&&atvMin&&+atvMin.preco<+dono.preco) obs+=`<div style="font-size:11px;color:var(--warn)">temos anúncio ATIVO mais barato (${esc(atvMin.empresa)} ${BRL(atvMin.preco)}), mas ele <b>não está neste catálogo</b> — vincular ao catálogo p/ disputar.</div>`;
+    if(!dono.eh_nitron&&pausMin) obs+=`<div style="font-size:11px;color:var(--warn)">${esc(pausMin.empresa)} tem anúncio a ${BRL(pausMin.preco)} (abaixo do dono), mas está <b>${esc(stLabel(pausMin.st))}</b> — não está competindo.</div>`;
+    return `<div class="calcline"><span class="l">Catálogo ${tag}</span><span class="v">dono: ${esc((dono.seller||'?').slice(0,16))}${dono.oficial?' ⭐':''} ${BRL(dono.preco)}</span></div>${obs}`;
   }).filter(Boolean).join("");
   const ps=ofs.map(o=>+o.preco).filter(x=>x>0);
   const cMin=ps.length?Math.min(...ps):0,cMax=ps.length?Math.max(...ps):0,cMed=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0; const nSel=new Set(ofs.map(o=>o.seller)).size;
   const cheapest=ofs.filter(o=>+o.preco===cMin)[0];
-  const nossos=(g.canais||[]).filter(ch=>+ch.preco>0);
-  const linhas=ps.length?nossos.map(ch=>{const p=+ch.preco;const dif=(p-cMin)/cMin;const pos=p<cMin?'<span class="yes">mais barato</span>':p>cMax?'<span class="mg r">acima do mercado</span>':'na faixa';const baixar=p>cMin?` · baixar ${BRL(p-cMin)} p/ igualar`:'';return `<div class="calcline"><span class="l">${esc(platShort(ch.marketplace))} · ${esc(ch.empresa||'')} ${BRL(p)}</span><span class="v">${dif>=0?'+':''}${PCT(dif)} vs menor · ${pos}${baixar}</span></div>`;}).join(""):'';
+  // nossos preços: mesma fonte da Precificação (PR: ML + Shopee, inclusive anúncios fora do Anymarket), com status
+  const prN=PR.filter(r=>r.ref===g.ref&&+r.preco>0).map(r=>({marketplace:r.plat==='ML'?'MERCADO_LIVRE':'SHOPEE',empresa:r.empresa,preco:+r.preco,st:r.st}));
+  const nossos=prN.length?prN:(g.canais||[]).filter(ch=>+ch.preco>0).map(ch=>({marketplace:ch.marketplace,empresa:ch.empresa,preco:+ch.preco,st:ch.status}));
+  const linhas=ps.length?nossos.map(ch=>{const p=+ch.preco;const dif=(p-cMin)/cMin;const atv=!ch.st||stNorm(ch.st)==='ativo';const pos=p<cMin?'<span class="yes">mais barato</span>':p>cMax?'<span class="mg r">acima do mercado</span>':'na faixa';const baixar=p>cMin?` · baixar ${BRL(p-cMin)} p/ igualar`:'';return `<div class="calcline" style="${atv?'':'opacity:.6'}"><span class="l">${esc(platShort(ch.marketplace))} · ${esc(ch.empresa||'')} ${BRL(p)}${atv?'':` <span class="pill p-mut" title="não está competindo">${esc(stLabel(ch.st))}</span>`}</span><span class="v">${dif>=0?'+':''}${PCT(dif)} vs menor · ${pos}${baixar}</span></div>`;}).join(""):'';
   const top=ofs.slice(0,8).map(o=>`<div class="calcline"><span class="l">${esc((o.seller||'').slice(0,22))}${o.oficial?' ⭐':''}${o.full?' <span class="pill pkit" style="font-size:9px">FULL</span>':''}</span><span class="v">${BRL(o.preco)}${o.url?` <a class="lnk" href="${esc(o.url)}" target="_blank" rel="noopener">↗</a>`:''}</span></div>`).join("");
   return `<div class="detcard" style="min-width:300px;max-width:440px"><h5 style="color:var(--con)">📊 Comparativo concorrência</h5>
     ${catBlocks?`<div style="font-size:11px;color:var(--mut)">Dono do catálogo <span title="proxy: menor preço do catálogo">(por menor preço)</span></div>${catBlocks}<div style="border-top:1px dashed var(--bd);margin:6px 0"></div>`:''}
