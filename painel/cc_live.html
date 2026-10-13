@@ -64,6 +64,7 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
 .pwin{width:110px}
 .c-any{color:var(--ac);font-weight:700}.c-both{color:var(--ok);font-weight:700}.c-real{color:var(--bad);font-weight:700}.c-semreal{color:var(--warn);font-weight:700}.c-no{color:var(--mut)}
 .dotA{width:8px;height:8px;border-radius:50%;display:inline-block}
+.stmini{display:block;font-size:10px;font-weight:700;margin-top:1px;white-space:nowrap}.st-ativo{color:var(--ok)}.st-pausado{color:var(--warn)}.st-semestoque{color:var(--con)}.st-revisao,.st-naopub,.st-outro{color:var(--mut)}.st-banido,.st-excluido{color:var(--bad)}
 .d-active{background:var(--ok)}.d-paused{background:var(--mut)}.d-closed{background:var(--bad)}.d-none{background:var(--bd)}
 .mk-ML{color:var(--nit)}.mk-SH{color:var(--shp)}.mk-TT{color:var(--tt)}
 .tablewrap{overflow:auto;max-height:72vh;border:1px solid var(--bd);border-radius:10px}
@@ -143,6 +144,7 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
       <span class="tag" data-fcm="ativos">● Só ativos</span>
       <span class="tag" data-fcm="pausados">⏸ Só pausados</span>
       <span class="tag" data-fcm="semestoque">⛔ Sem estoque CD</span>
+      <span class="tag" data-fcm="semestcanal" title="algum canal com status 'sem estoque' no marketplace">⛔ Sem estoque no canal</span>
       <span class="tag" data-fcm="conc">Só com concorrência</span>
       <span class="tag" data-fcm="acima">Acima do concorrente</span>
       <span class="tag" data-fcm="baixou">🔻 Concorrente baixou (7d)</span>
@@ -599,11 +601,12 @@ function drawCM(){
     if(q && !(norm(g.ref).includes(q)||norm(g.descr).includes(q))) return false;
     if(cols.length){const has=cols.some(c=>{const key=c.marketplace+'|'+c.empresa;return (prIdx[g.ref]&&prIdx[g.ref][key])||(g.canais||[]).some(ch=>ch.marketplace===c.marketplace&&(ch.empresa||'')===c.empresa);});if(!has) return false;}
     if(fcm==="conc") return !!g.conc;
-    if(fcm==="acima"){const ps=Object.values(prIdx[g.ref]||{}).map(x=>+x.preco).filter(v=>v>0);const o=ps.length?Math.min(...ps):cmOurMin(g);return g.conc&&o!=null&&o>+g.conc.min;}
+    if(fcm==="acima"){const al=Object.values(prIdx[g.ref]||{}).filter(x=>+x.preco>0);const at=al.filter(x=>stNorm(x.st)==='ativo');const ps=(at.length?at:al).map(x=>+x.preco);const o=ps.length?Math.min(...ps):cmOurMin(g);return g.conc&&o!=null&&o>+g.conc.min;}
     if(fcm==="baixou") return !!AL[g.ref];
     if(fcm==="ativos") return refSt[g.ref]&&refSt[g.ref].has("ativo");
     if(fcm==="pausados") return refSt[g.ref]&&refSt[g.ref].has("pausado")&&!refSt[g.ref].has("ativo");
     if(fcm==="semestoque") return ((+g.estoque||0)-(+g.reservado||0))<=0;
+    if(fcm==="semestcanal") return refSt[g.ref]&&refSt[g.ref].has("semestoque");
     if(fcm==="prejuizo"||fcm==="m0_10"||fcm==="m10_20"||fcm==="mge20"){const mm=RM[g.ref];const mg=mm?mm.min:null; if(fcm==="prejuizo")return mg!=null&&mg<0; if(fcm==="m0_10")return mg!=null&&mg>=0&&mg<0.10; if(fcm==="m10_20")return mg!=null&&mg>=0.10&&mg<0.20; return mg!=null&&mg>=0.20;}
     return true;
   });
@@ -613,10 +616,10 @@ function drawCM(){
   document.querySelector("#tCM tbody").innerHTML=rows.slice(0,500).map(g=>{
     const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');const k=ch.marketplace+'|'+e;if(!m2[k]||ch.status==='active')m2[k]=ch;});
     const pix=prIdx[g.ref]||{};
-    const tds=cols.map(c=>{const key=c.marketplace+'|'+c.empresa;const ch=m2[key];const pr=pix[key];const preco=ch?+ch.preco:(pr?+pr.preco:null);const stv=ch?ch.status:(pr?pr.st:null);return (preco!=null&&preco>0)?`<td class="r"><span class="dotA ${stNorm(stv)==='ativo'?'d-active':stNorm(stv)==='pausado'?'d-paused':'d-none'}"></span> <span class="num">${BRL(preco)}</span></td>`:'<td class="r no">—</td>';}).join("");
+    const tds=cols.map(c=>{const key=c.marketplace+'|'+c.empresa;const ch=m2[key];const pr=pix[key];const preco=ch?+ch.preco:(pr?+pr.preco:null);const stv=(pr&&pr.st)?pr.st:(ch?ch.status:null);const n=stNorm(stv)||'outro';return (preco!=null&&preco>0)?`<td class="r" title="status: ${esc(stv||'—')}"><span class="dotA ${n==='ativo'?'d-active':n==='pausado'?'d-paused':n==='semestoque'?'d-closed':'d-none'}"></span> <span class="num">${BRL(preco)}</span>${stv?`<span class="stmini st-${n}">${n==='ativo'?'● ':n==='pausado'?'⏸ ':n==='semestoque'?'⛔ ':''}${esc(stLabel(stv))}</span>`:''}</td>`:'<td class="r no">—</td>';}).join("");
     const mm=RM[g.ref];const mgTd=mm?`<td class="r mg ${mgCls(mm.min)}" title="pior canal">${PCT(mm.min)}</td>`:'<td class="r no">—</td>';
     const cc=g.conc?`<span class="num">${BRL(g.conc.min)}</span>–${BRL(g.conc.max)} <span class="pill" style="background:rgba(227,133,59,.16);color:var(--con)">${g.conc.ofertas}</span>`:'<span class="no">—</span>';
-    const ourP=Object.values(pix).map(x=>+x.preco).filter(v=>v>0);const our=ourP.length?Math.min(...ourP):cmOurMin(g);
+    const ourAll=Object.values(pix).filter(x=>+x.preco>0);const ourAt=ourAll.filter(x=>stNorm(x.st)==='ativo');const ourP=(ourAt.length?ourAt:ourAll).map(x=>+x.preco);const our=ourP.length?Math.min(...ourP):cmOurMin(g);
     const dMenor=g.conc?diffCell(our,g.conc.min):'<td class="r no">—</td>';
     const dMedia=g.conc?diffCell(our,g.conc.medio):'<td class="r no">—</td>';
     const v30=cmV30(g.ref);
@@ -1324,7 +1327,7 @@ document.addEventListener("click",async e=>{
 
 // export
 document.getElementById("xlPrec").onclick=function(){const head=["Ref","Categoria","Empresa","Plataforma","Título","Preço","Custo cheio","Crédito entrada","Custo NET","Comissão","Taxa fixa","Imposto saída","Frete","Margem","Alvo"];const data=(window._prRows||prFiltered()).map(r=>{const m=memoria(r);return [r.ref,r.linha,r.empresa,platShort(r.plat),r.titulo,m.P,m.Cbase,m.credito,m.NET,m.comValor,m.fixa,m.imposto,m.frete,m.margem,m.alvo];});copyExcel(head,data,this);};
-document.getElementById("xlCM").onclick=function(){const cols=cmCols();const RM=refMgMap();const head=["Ref","Descrição","Pior margem",...cols.map(c=>platShort(c.marketplace)+" "+c.empresa),"Conc mín","Conc máx","Ofertas","vs menor %","Vendas 30d"];const data=(window._cmRows||[]).map(g=>{const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');m2[ch.marketplace+'|'+e]=ch;});const o=cmOurMin(g);const vs=(o!=null&&g.conc&&+g.conc.min>0)?+(((o-+g.conc.min)/+g.conc.min)*100).toFixed(1):"";const mm=RM[g.ref];return [g.ref,g.descr,mm?mm.min:"",...cols.map(c=>{const ch=m2[c.marketplace+'|'+c.empresa];return ch?ch.preco:"";}),g.conc?g.conc.min:"",g.conc?g.conc.max:"",g.conc?g.conc.ofertas:"",vs,cmV30(g.ref)||""];});copyExcel(head,data,this);};
+document.getElementById("xlCM").onclick=function(){const cols=cmCols();const RM=refMgMap();const head=["Ref","Descrição","Pior margem",...cols.flatMap(c=>[platShort(c.marketplace)+" "+c.empresa,"Status "+platShort(c.marketplace)+" "+c.empresa]),"Conc mín","Conc máx","Ofertas","vs menor %","Vendas 30d"];const data=(window._cmRows||[]).map(g=>{const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');m2[ch.marketplace+'|'+e]=ch;});const o=cmOurMin(g);const vs=(o!=null&&g.conc&&+g.conc.min>0)?+(((o-+g.conc.min)/+g.conc.min)*100).toFixed(1):"";const mm=RM[g.ref];return [g.ref,g.descr,mm?mm.min:"",...cols.flatMap(c=>{const k=c.marketplace+'|'+c.empresa;const ch=m2[k];const pr=PR.find(r=>r.ref===g.ref&&(r.plat==='ML'?'MERCADO_LIVRE':'SHOPEE')===c.marketplace&&r.empresa===c.empresa);const st=(pr&&pr.st)||(ch&&ch.status)||"";return [ch?ch.preco:(pr?pr.preco:""),st?stLabel(st):""];}),g.conc?g.conc.min:"",g.conc?g.conc.max:"",g.conc?g.conc.ofertas:"",vs,cmV30(g.ref)||""];});copyExcel(head,data,this);};
 document.getElementById("xlR").onclick=function(){copyExcel(["Revendedor","Marketplace","Anúncios","CNPJ","Razão social","Município","UF"],D.revendedores.map(x=>[x.seller_nick,x.marketplace,x.n_anuncios,x.cnpj_digitos,x.razao_social,x.municipio,x.uf]),this);};
 document.getElementById("xlCo").onclick=function(){const cols=concCols();const head=["Ref","Descrição","Tabela Sankhya",...cols.map(c=>platShort(c.mp)+" "+c.emp),"Preço div min","Preço div max","Custo","Estoque"];const data=(window._concRows||concFiltered()).map(x=>{const pd=precoDiv(x);return [x.ref,x.descricao,x.na_155?"sim":"não",...cols.map(c=>{const k=c.mp+'|'+c.emp;const a=(x.any_canais&&x.any_canais[k])||0;const r=c.mp==='MERCADO_LIVRE'?((x.real_canais&&x.real_canais[k])||0):'';return `any:${a}${c.mp==='MERCADO_LIVRE'?' real:'+r:''}`;}),pd?pd.mn:"",pd?pd.mx:"",x.custo_final,x.estoque];});copyExcel(head,data,this);};
 document.getElementById("xlCat").onclick=function(){const head=["Ref","Descrição","EAN","Catálogo","Clássico","Dono do catálogo","Nosso menor","Conc menor","Ação","Estoque CD"];const data=(window._catRows||catFiltered()).map(x=>[x.ref,x.descr,x.tem_ean?"sim":"não",x.cat,x.classico,x.dono,x.our_cat_min,x.comp_min,x.acao,x.disp]);copyExcel(head,data,this);};
