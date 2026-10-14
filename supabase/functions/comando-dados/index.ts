@@ -1,5 +1,7 @@
-// comando-dados v25: + status Shopee FIEL (v_shopee_status: item/variação, inclui pausado/sem estoque/excluído), Shopee excluído fora do "real",
-// + 'oids' (todas as ofertas Anymarket do mesmo anúncio ML — conflito de cores), + estoque CD em criar. st=COALESCE(ml_status,Anymarket). DB direto, CORS. ?secret=nitron-radar-9f4c2a
+// comando-dados v33 = v32 (Ricardo-PC: criar=todos 155 fora-any + categoria grupo Sankhya + visão; fora_hub; precoany; precohub; pendencias)
+//   + (Claude, reaplicado da v25) status Shopee REAL por canal (v_shopee_status), Shopee excluído/fora fora do "real" e do fora_hub,
+//     'oids' (todas as ofertas Anymarket do mesmo anúncio ML), oid preferindo a própria ref, disp/reservado em criar,
+//     + concorrência SHOPEE (shopee_concorrente) por referência. ?secret=nitron-radar-9f4c2a
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Content-Type':'application/json'};
@@ -26,6 +28,7 @@ Deno.serve(async(req)=>{
     const canais=(await c.queryObject(`SELECT DISTINCT marketplace, conta, ${EMP} empresa FROM anymarket_anuncio WHERE marketplace<>'SHOPIFY' ORDER BY marketplace,conta`)).rows;
     const any_counts=(await c.queryObject(`SELECT marketplace, ${EMP} empresa, count(DISTINCT referencia)::int refs, count(*)::int anuncios FROM anymarket_anuncio WHERE marketplace<>'SHOPIFY' GROUP BY 1,2`)).rows;
     const real_counts=(await c.queryObject`SELECT loja empresa, count(DISTINCT ref_casada)::int refs FROM anuncio_proprio WHERE plataforma='ML' AND ref_casada IS NOT NULL GROUP BY 1`).rows;
+    const shopee_counts=(await c.queryObject`WITH sp AS (SELECT DISTINCT referencia, loja FROM shopee_produto WHERE referencia IS NOT NULL AND preco>0 AND COALESCE(status,'NORMAL') NOT IN ('SELLER_DELETE','SHOPEE_DELETE') AND char_length(referencia)=11 AND referencia LIKE '___.___.___'), hub AS (SELECT DISTINCT referencia FROM anymarket_anuncio WHERE marketplace='SHOPEE') SELECT loja empresa, count(*)::int raspadas, count(*) FILTER (WHERE referencia IN (SELECT referencia FROM hub))::int com_hub, count(*) FILTER (WHERE referencia NOT IN (SELECT referencia FROM hub))::int fora_hub FROM sp GROUP BY loja`).rows;
     const empresas=[...new Set([...any_counts.map((r:any)=>r.empresa),...real_counts.map((r:any)=>r.empresa)])].sort();
     const config=(await c.queryObject`SELECT loja, plataforma, regime, imposto_pct::float imposto_pct, embalagem::float embalagem, margem_alvo::float margem_alvo, custo_liquido FROM precificacao_config`).rows;
     const taxa_shopee=(await c.queryObject`SELECT valor_min::float valor_min, valor_max::float valor_max, comissao_pct::float comissao_pct, taxa_fixa::float taxa_fixa FROM taxa_shopee ORDER BY valor_min`).rows;
@@ -51,15 +54,49 @@ Deno.serve(async(req)=>{
     // canais Shopee: status do Anymarket -> status REAL da loja (quando o item/variação foi encontrado na Shopee)
     for(const g of grupos){ for(const ch of (g.canais||[])){ if(ch.marketplace==='SHOPEE'){ const r=shSt[String(ch.id||'')]; if(r){ ch.st_any=ch.status; ch.status=r.st; ch.st_real=r.st; ch.estoque_mp=r.estoque; } else if(ch.id){ ch.st_any=ch.status; ch.st_real=null; } } } }
 
-    const criar=(await c.queryObject`SELECT an.referencia ref, an.titulo, an.descrprod, an.categoria_nome, an.preco_sugerido::float preco_sugerido, an.foto, an.estoque_disp, an.ean, an.cor, an.loja, an.n_fotos, (an.foto IS NOT NULL) tem_foto, (an.categoria_id IS NOT NULL) tem_cat, pp.linha,
-        (COALESCE(pp.estoque_nitron,0)+COALESCE(pp.estoque_extrema,0))::float estoque_cd, (COALESCE(pp.reservado_nitron,0)+COALESCE(pp.reservado_extrema,0))::float reservado,
-        CASE WHEN pp.referencia IS NOT NULL THEN (COALESCE(pp.estoque_nitron,0)+COALESCE(pp.estoque_extrema,0)-COALESCE(pp.reservado_nitron,0)-COALESCE(pp.reservado_extrema,0))::float END disp
-      FROM anuncio_novo an JOIN v_conciliacao_ref co ON co.referencia=an.referencia LEFT JOIN precificacao_produto pp ON pp.referencia=an.referencia
-      WHERE co.no_anymarket IS NOT TRUE AND co.na_tabela_155 IS TRUE ORDER BY (an.foto IS NOT NULL) DESC, an.referencia`).rows;
+    const CATLINHA=`CASE
+        WHEN pp.linha ILIKE 'Linha Potes' OR pp.linha ILIKE 'Linha Coloratto' THEN 'Potes'
+        WHEN pp.linha ILIKE 'Linha Organiza%' OR pp.linha ILIKE 'Linha ECO' THEN 'Organização'
+        WHEN pp.linha ILIKE 'Linha Cozinha' THEN 'Cozinha'
+        WHEN pp.linha ILIKE 'Linha Lixeiras' THEN 'Lixeiras'
+        WHEN pp.linha ILIKE 'Linha Realce' OR pp.linha ILIKE 'Decor%' THEN 'Decor'
+        WHEN pp.linha ILIKE 'Teca%' THEN 'Teca'
+        WHEN pp.linha ILIKE 'Linha Banheiro' THEN 'Banheiro'
+        WHEN pp.linha ILIKE 'Linha Micro%' THEN 'Micro-Ondas'
+        WHEN pp.linha ILIKE 'Linha Jarras' THEN 'Jarras'
+        WHEN pp.linha ILIKE 'Linha Frasqueira%' THEN 'Frasqueiras'
+        WHEN pp.linha ILIKE 'Linha Limpeza' THEN 'Limpeza'
+        WHEN pp.linha ILIKE 'Linha Geladeira' THEN 'Geladeira'
+        WHEN pp.linha ILIKE 'Linha Infantil' THEN 'Infantil'
+        ELSE NULL END`;
+    const criar=(await c.queryObject(`SELECT co.referencia ref, COALESCE(an.titulo, co.descricao) titulo, COALESCE(an.descrprod, co.descricao) descrprod,
+        ${CATLINHA} categoria_grupo, pp.linha,
+        an.preco_sugerido::float preco_sugerido,
+        COALESCE(an.foto, pf.link_principal) foto,
+        COALESCE(an.n_fotos, pf.n_fotos, 0) n_fotos,
+        COALESCE(an.ean, pr.ean) ean, an.cor,
+        (COALESCE(an.foto, pf.link_principal) IS NOT NULL) tem_foto,
+        (${CATLINHA} IS NOT NULL) tem_cat,
+        (COALESCE(pp.estoque_nitron,0)+COALESCE(pp.estoque_extrema,0)) estoque_cd,
+        (COALESCE(pp.reservado_nitron,0)+COALESCE(pp.reservado_extrema,0))::float reservado,
+        CASE WHEN pp.referencia IS NOT NULL THEN (COALESCE(pp.estoque_nitron,0)+COALESCE(pp.estoque_extrema,0)-COALESCE(pp.reservado_nitron,0)-COALESCE(pp.reservado_extrema,0))::float END disp,
+        cv.categoria_visao, cv.confianca::float visao_conf, cv.concorda visao_ok
+      FROM v_conciliacao_ref co
+      LEFT JOIN anuncio_novo an ON an.referencia=co.referencia
+      LEFT JOIN precificacao_produto pp ON pp.referencia=co.referencia
+      LEFT JOIN produto_foto pf ON pf.referencia=co.referencia
+      LEFT JOIN preco_produto pr ON pr.referencia=co.referencia
+      LEFT JOIN anuncio_cat_visao cv ON cv.referencia=co.referencia
+      WHERE co.na_tabela_155 AND co.no_anymarket IS NOT TRUE
+      ORDER BY (COALESCE(an.foto, pf.link_principal) IS NOT NULL) DESC, co.referencia`)).rows;
 
     const revendedores=(await c.queryObject`SELECT nome seller_nick, 'Mercado Livre' marketplace, cnpj_digitos, razao_social, cidade municipio, uf, n_catalogos n_anuncios, eh_cliente, cnpj_status, ('https://www.mercadolivre.com.br/perfil/'||nome) seller_url, anuncios FROM v_revendedor_anuncios ORDER BY n_catalogos DESC NULLS LAST`).rows;
 
     const ofertas=(await c.queryObject`SELECT pp.referencia ref, json_agg(json_build_object('preco',ra.price,'seller',COALESCE(sm.nome,ra.seller_nick),'url',ra.url,'oficial',ra.is_official_store,'full',ra.is_full,'titulo',ra.title,'mp',ra.marketplace,'tipo',ra.listing_type,'catalogo',ra.catalog_id,'eh_nitron',ra.eh_nitron) ORDER BY ra.price) m FROM revenda_anuncio ra JOIN preco_produto pp ON pp.ean=ra.ean_busca LEFT JOIN revenda_seller_ml sm ON sm.seller_id::text=ra.seller_id::text WHERE ra.price>0 GROUP BY pp.referencia`).rows;
+    // concorrência SHOPEE (shopee-conc-scan): ofertas de outras lojas por referência
+    const ofsh=(await c.queryObject`SELECT referencia ref, max(captured_em) em, json_agg(json_build_object('preco',preco::float,'loja',loja_nome,'shop_id',shop_id,'nome',nome,'url',url,'vendidos',vendidos,'rating',rating,'oficial',oficial,'eh_nosso',eh_nosso) ORDER BY preco) m FROM shopee_concorrente WHERE preco>0 GROUP BY referencia`).rows as any[];
+    const ofertas_shopee:any={}; for(const o of ofsh) ofertas_shopee[o.ref]={em:o.em,ofertas:o.m};
+    const shopee_scan=(await c.queryObject`SELECT count(*)::int refs, count(*) FILTER (WHERE erro IS NULL)::int ok, max(scan_em) ultimo, (array_agg(erro ORDER BY scan_em DESC) FILTER (WHERE erro IS NOT NULL))[1] ultimo_erro FROM shopee_conc_scan`).rows[0];
 
     const conc=(await c.queryObject(`
       WITH acc AS (SELECT referencia, marketplace, ${EMP} empresa, count(*) n FROM anymarket_anuncio WHERE marketplace<>'SHOPIFY' GROUP BY 1,2,3),
@@ -92,6 +129,20 @@ Deno.serve(async(req)=>{
     const v30rows=(await c.queryObject`SELECT i.referencia ref, SUM(i.amount)::float qtd, SUM(i.total)::float receita FROM anymarket_pedido_item i JOIN anymarket_pedido p ON p.id=i.pedido_id WHERE p.payment_date > now()-interval '30 days' AND p.status NOT IN ('CANCELED','CANCELLED') AND i.referencia IS NOT NULL GROUP BY 1`).rows;
     const vendas30:any={}; for(const v of v30rows as any[]){ vendas30[v.ref]={qtd:v.qtd,receita:v.receita}; }
 
-    return new Response(JSON.stringify({gerado_em:new Date().toISOString(),resumo,plataformas,linhas,empresas,canais_disponiveis:canais,any_counts,real_counts,config,taxa_shopee,taxa_ml,grupos,criar,revendedores,ofertas:ofMap,conciliacao:conc,vendas,vendas_top,taxa_real,vendas30},(_k,v)=>typeof v==='bigint'?Number(v):v),{headers:CORS});
+    const r10rows=(await c.queryObject`SELECT DISTINCT ON (offer_id) offer_id::text oid, preco_novo::float preco, em FROM anymarket_preco_log WHERE origem='floor10-todos' AND resultado='ok' ORDER BY offer_id, em DESC`).rows;
+    const reprec10:any={}; for(const r of r10rows as any[]){ reprec10[r.oid]={p:r.preco,em:r.em}; }
+
+    const hubrows=(await c.queryObject`SELECT DISTINCT ON (offer_id) offer_id::text oid, preco_novo::float p, em FROM anymarket_preco_log WHERE resultado='ok' AND preco_novo IS NOT NULL AND em>now()-interval '21 days' ORDER BY offer_id, em DESC`).rows;
+    const precohub:any={}; for(const r of hubrows as any[]){ precohub[r.oid]={p:r.p,em:r.em}; }
+
+    const anyrows=(await c.queryObject`SELECT id::text oid, preco::float p, atualizado_em em FROM anymarket_anuncio WHERE marketplace IN ('MERCADO_LIVRE','SHOPEE') AND preco>0`).rows;
+    const precoany:any={}; for(const r of anyrows as any[]){ precoany[r.oid]={p:r.p,em:r.em}; }
+
+    const pendrows=(await c.queryObject`WITH last AS (SELECT DISTINCT ON (offer_id, marketplace) offer_id::text oid, referencia ref, marketplace, conta, preco_novo::float preco_novo, http, resultado, em FROM anymarket_preco_log WHERE em>now()-interval '30 days' ORDER BY offer_id, marketplace, em DESC) SELECT oid, ref, marketplace, conta, preco_novo, http, substring(resultado for 180) motivo, em FROM last WHERE resultado<>'ok' ORDER BY ref`).rows;
+    const pendencias={auto_calc:pendrows};
+
+    const fora_hub=(await c.queryObject`WITH sp AS (SELECT referencia, min(loja) loja, min(item_id) item_id, round(min(preco)::numeric,2) preco, (array_agg('https://shopee.com.br/product/'||shop_id||'/'||item_id ORDER BY preco))[1] url FROM shopee_produto WHERE referencia IS NOT NULL AND preco>0 AND COALESCE(status,'NORMAL') NOT IN ('SELLER_DELETE','SHOPEE_DELETE') AND char_length(referencia)=11 AND referencia LIKE '___.___.___' AND referencia NOT IN (SELECT referencia FROM anymarket_anuncio WHERE marketplace='SHOPEE') AND referencia NOT IN (SELECT referencia FROM anymarket_sku) GROUP BY referencia) SELECT referencia ref, loja, item_id::text item_id, preco::float preco, url, (SELECT custo155::float FROM precificacao_produto p WHERE p.referencia=sp.referencia) custo, (SELECT (COALESCE(estoque_nitron,0)+COALESCE(estoque_extrema,0))::int FROM precificacao_produto p WHERE p.referencia=sp.referencia) estoque, (sp.referencia IN (SELECT referencia FROM v_conciliacao_ref WHERE na_tabela_155)) na_155, (sp.referencia IN (SELECT ref_casada FROM anuncio_proprio WHERE plataforma='ML')) tem_ml FROM sp ORDER BY (SELECT custo155 FROM precificacao_produto p WHERE p.referencia=sp.referencia) DESC NULLS LAST, referencia`).rows;
+
+    return new Response(JSON.stringify({gerado_em:new Date().toISOString(),resumo,plataformas,linhas,empresas,canais_disponiveis:canais,any_counts,real_counts,shopee_counts,config,taxa_shopee,taxa_ml,grupos,criar,revendedores,ofertas:ofMap,ofertas_shopee,shopee_scan,conciliacao:conc,vendas,vendas_top,taxa_real,vendas30,reprec10,precohub,precoany,pendencias,fora_hub},(_k,v)=>typeof v==='bigint'?Number(v):v),{headers:CORS});
   }catch(e){ return new Response(JSON.stringify({error:String(e).slice(0,500)}),{status:500,headers:CORS}); } finally{ await c.end(); }
 });

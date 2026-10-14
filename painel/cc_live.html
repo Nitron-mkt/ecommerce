@@ -86,6 +86,7 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
   <div class="sub">Anymarket = hub · custo Sankhya · taxa/frete reais · imposto por regime · concorrência raspada · <span id="stamp"></span> · <a id="refreshBtn" style="color:var(--ac);cursor:pointer">↻ atualizar</a></div>
   <div class="tabs" id="tabs">
     <div class="tab on" data-t="prec">💰 Precificação</div>
+    <div class="tab" data-t="pend">🚨 Pendências <span id="pendBadge" class="pill" style="background:#b91c1c;color:#fff;display:none"></span></div>
     <div class="tab" data-t="cm">🏷️ Canais & Mercado</div>
     <div class="tab" data-t="criar">🆕 Criar anúncios</div>
     <div class="tab" data-t="rev">📡 Revendedores</div>
@@ -126,13 +127,14 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
 
   <!-- CANAIS & MERCADO -->
   <div id="cm" class="hide">
-    <div class="note">Cada linha é uma <b>referência</b> com o preço em <b>cada canal lado a lado</b> (Nitron/Mundo UD · ML/Shopee, com bolinha de status) + a <b>Margem</b> do pior canal (vermelho = prejuízo) + a <b>concorrência</b> (mín–máx, nº ofertas) e quanto estamos acima/abaixo + vendas 30d. Clique na linha para o detalhe/memória por canal e as ofertas dos concorrentes.</div>
+    <div class="note">Cada linha é uma <b>referência</b> com o preço em <b>cada canal lado a lado</b> e a <b>concorrência separada por plataforma</b> (ML × Shopee) (Nitron/Mundo UD · ML/Shopee, com bolinha de status) + a <b>Margem</b> do pior canal (vermelho = prejuízo) + a <b>concorrência</b> (mín–máx, nº ofertas) e quanto estamos acima/abaixo + vendas 30d. Clique na linha para o detalhe/memória por canal e as ofertas dos concorrentes.</div>
     <div class="bar">
       <input id="qcm" placeholder="Buscar referência, descrição ou título…" style="min-width:200px">
       <select id="cmEmp"><option value="">Todas as empresas</option></select>
       <select id="cmPlat"><option value="">Todas as plataformas</option></select>
       <select id="cmLinha"><option value="">Todas as categorias</option></select>
       <button class="btn ghost" id="xlCM">Copiar p/ Excel</button>
+      <span id="shScanInfo" style="font-size:11px;color:var(--mut)"></span>
       <span class="cnt" id="cntCM"></span>
     </div>
     <div class="bar">
@@ -146,6 +148,8 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
       <span class="tag" data-fcm="semestoque">⛔ Sem estoque CD</span>
       <span class="tag" data-fcm="semestcanal" title="algum canal com status 'sem estoque' no marketplace">⛔ Sem estoque no canal</span>
       <span class="tag" data-fcm="conc">Só com concorrência</span>
+      <span class="tag" data-fcm="concsh">Com concorrência Shopee</span>
+      <span class="tag" data-fcm="acimash">Acima do concorrente Shopee</span>
       <span class="tag" data-fcm="acima">Acima do concorrente</span>
       <span class="tag" data-fcm="baixou">🔻 Concorrente baixou (7d)</span>
     </div>
@@ -168,6 +172,8 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
       <span class="tag" data-fc2="semfoto">Sem foto</span>
       <span class="tag" data-fc2="semean">Sem EAN</span>
       <span class="tag" data-fc2="semestoque">⛔ Sem estoque CD</span>
+      <span class="tag" data-fc2="revcat">⚠️ Categoria a revisar</span>
+      <button class="btn ghost" id="verCatVisao" style="border-color:var(--ac);color:var(--ac)">🔎 IA conferir categorias (lote)</button>
       <button class="btn ghost" id="xlCriar">Copiar p/ Excel</button>
       <span class="cnt" id="cntC"></span></div>
     <div class="tablewrap"><table id="tCriar"><thead></thead><tbody></tbody></table></div>
@@ -272,6 +278,13 @@ td.ti{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;
     <div class="note">Regras de taxa que entram no cálculo de preço de cada plataforma. <b>Mercado Livre</b> vem <b>real da API por anúncio</b> — é só a <b>comissão</b> do tipo (clássico ~11,5–12% · premium ~16,5–17%); <b>verificado em pedidos reais: o ML não cobra custo fixo de itens &lt; R$79</b> nesta conta. <b>Shopee</b> usa a tabela por faixa abaixo. As demais plataformas do Anymarket ficam listadas para cadastrar a regra quando você ativar.</div>
     <div id="taxasBody"></div>
   </div>
+
+  <!-- PENDÊNCIAS -->
+  <div id="pend" class="hide">
+    <div class="note">Itens que <b>exigem ação</b> para o preço entrar: anúncios com <b>cálculo automático de preço</b> no Anymarket (recusam a gravação até virar <b>"Manual por anúncio"</b>), anúncios <b>Shopee sem vínculo no hub</b> (não há por onde escrever o preço), e os que já receberam 10% e <b>ainda estão propagando</b> para o canal.</div>
+    <div id="pendBody"></div>
+  </div>
+
 </div>
 
 <script>
@@ -285,6 +298,12 @@ const BRL=n=>n==null||isNaN(n)?"—":Number(n).toLocaleString("pt-BR",{style:"cu
 const PCT=n=>n==null||isNaN(n)?"—":(Number(n)*100).toFixed(1)+"%";
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mgCls=m=>m==null?"":m>=0.2?"mok":m>=0.08?"mwarn":"mbad";
+// a linha está exibindo o preço que consta no Anymarket (gravado por nós); marca se o canal ainda não refletiu
+function env10Badge(r,m){
+  if(!r||!r.hub||!r.recent) return "";   // etiqueta só p/ anúncios que repreçamos (≤21d)
+  if(hubRefletiu(r)) return "";          // canal já refletiu: sem etiqueta
+  return ` <span class="pill" style="background:#1d4ed8;color:#fff;font-weight:700" title="Preço do Anymarket que você gravou (R$${(+r.preco).toFixed(2)}). O canal ainda está refletindo (vivo R$${(+r.preco_live||0).toFixed(2)}): ML relê em ~1 min, Shopee a cada ~15 min.">⏳ canal</span>`;
+}
 const norm=s=>(s==null?"":s.toString()).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[.\s\/_\-]/g,"");
 const stNorm=s=>{if(!s)return"";const l=(""+s).toLowerCase();return (l==="active"||l==="ativo"||l.startsWith("ativo -"))?"ativo":l.includes("paus")?"pausado":(l.includes("review")||l.includes("revis"))?"revisao":(l.includes("estoque"))?"semestoque":(l.includes("banid")||l.includes("banned"))?"banido":(l.includes("exclu")||l.includes("delet")||l==="closed")?"excluido":(l.includes("não publicado")||l.includes("unpublished"))?"naopub":"outro";};
 const stLabel=x=>({ativo:'ativo',pausado:'pausado',revisao:'em revisão',semestoque:'sem estoque',banido:'banido',excluido:'excluído',naopub:'não publicado'})[stNorm(x)]||String(x||'inativo').toLowerCase();
@@ -404,16 +423,29 @@ function renderStats(){
 
 /* ===== linhas de precificação (ML + Shopee) ===== */
 let PR=[];
+// FONTE DE PREÇO = Anymarket (o hub é a verdade); as plataformas (ML vivo/Shopee raspado) servem p/ concorrência/catálogo.
+// Usa o preço que CONSTA no Anymarket p/ todo anúncio nosso; cai no preço vivo só quando não há anúncio no hub (sem oid).
+function applyHub(r){
+  const h=(D.precoany&&r.oid)?D.precoany[String(r.oid)]:((D.precohub&&r.oid)?D.precohub[String(r.oid)]:null);
+  if(h && +h.p>0){
+    const oldP=+r.preco||0, newP=+h.p;
+    r.preco_live=oldP;
+    if(/ML|MERCADO/i.test(r.plat)){const feePct=oldP>0?((+r.fee||0)/oldP):0.13; r.fee=feePct*newP;}
+    r.preco=newP; r.hub=true; r.hub_em=h.em;
+    r.recent=!!(D.precohub && D.precohub[String(r.oid)]);   // gravado por nós ≤21d (p/ etiqueta "canal refletindo")
+  }
+  return r;
+}
+const hubRefletiu=r=>r&&r.hub&&+r.preco_live>0&&Math.abs(+r.preco_live-+r.preco)<0.02;
 function buildPR(){
   PR=[];
   D.grupos.forEach(g=>{
-    (g.nitron||[]).forEach(a=>PR.push(mlRow(g,a,'Nitron')));
-    (g.mundoud||[]).forEach(a=>PR.push(mlRow(g,a,'Mundo UD')));
+    (g.nitron||[]).forEach(a=>PR.push(applyHub(mlRow(g,a,'Nitron'))));
+    (g.mundoud||[]).forEach(a=>PR.push(applyHub(mlRow(g,a,'Mundo UD'))));
     const shCh=(g.canais||[]).filter(c=>c.marketplace==='SHOPEE');
     const cov=new Set(shCh.map(c=>c.empresa||(/mundo/i.test(c.conta||'')?'Mundo UD':'Nitron')));
-    shCh.forEach(c=>PR.push(shRow(g,c)));
-    const sr=g.shopee_real||{};
-    Object.keys(sr).forEach(loja=>{if(!cov.has(loja))PR.push(shRow(g,{empresa:loja,conta:loja,marketplace:'SHOPEE',preco:sr[loja].preco,oid:null,st:(sr[loja].st||'Ativo'),st_real:(sr[loja].st||null),link:sr[loja].url,titulo:g.descr}));});
+    shCh.forEach(c=>PR.push(applyHub(shRow(g,c))));
+    // FONTE = Anymarket (hub). NAO sintetizamos anuncios Shopee raspados fora do hub (muitos estao mortos) — scraped so p/ concorrencia.
   });
 }
 function mlRow(g,a,emp){const imp=emp==='Nitron'?0.2725:0.08;
@@ -479,7 +511,12 @@ function drawPrec(){
   if(spK&&SPK[spK]){const f=SPK[spK];recs.sort((a,b)=>{let va=f(a),vb=f(b);if(typeof va==='string')return spD*va.localeCompare(vb);return spD*((va==null?-1e15:va)-(vb==null?-1e15:vb));});}
   document.getElementById("cnt").textContent=rows.length+" de "+PR.length+" anúncios";
   document.querySelector("#tP thead").innerHTML=prHead();
-  document.querySelector("#tP tbody").innerHTML=recs.slice(0,500).map(({r,m,q30,r30,l30})=>{return `
+  let recPend=0,semhubNeg=0;
+  for(const r of PR){const mm=memoria(r);const mg=mm.margem;
+    if(r.hub && r.recent && !hubRefletiu(r)) recPend++;
+    else if(!r.oid && /SH|SHOPEE/i.test(r.plat) && mg!=null && mg<0.10 && /^\d{3}\.\d{3}\.\d{3}$/.test(r.ref)) semhubNeg++;}
+  const banner=(recPend||semhubNeg)?`<tr><td colspan="16" style="background:#0b254e;color:#dbeafe;padding:8px 10px;font-size:12px;line-height:1.5">💠 Preço e margem vêm do <b>Anymarket</b> (o hub é a fonte; ML/Shopee servem p/ concorrência).${recPend?` ⏳ <b>${recPend}</b> anúncio(s) recém-repreçados — o canal ainda está refletindo (ML ~1 min · Shopee ~15 min).`:''}${semhubNeg?` &nbsp;⚠️ <b>${semhubNeg}</b> Shopee <b>sem vínculo no hub</b> (ver aba <b>🚨 Pendências</b>).`:''}</td></tr>`:'';
+  document.querySelector("#tP tbody").innerHTML=banner+recs.slice(0,500).map(({r,m,q30,r30,l30})=>{return `
     <tr class="click">
       <td class="num" style="white-space:nowrap">${fotoImg(r.foto,30)} ${esc(r.ref)}${r.is_kit?' <span class="pill pkit">KIT</span>':''}</td>
       <td><span class="badge-emp ${empCls(r.empresa)}">${esc(r.empresa)}</span></td>
@@ -491,7 +528,7 @@ function drawPrec(){
       <td class="r num">${BRL(m.feeTot)}</td>
       <td class="r num">${BRL(m.imposto)}</td>
       <td class="r num">${BRL(m.frete)}</td>
-      <td class="r mg ${mgCls(m.margem)}">${PCT(m.margem)}</td>
+      <td class="r mg ${mgCls(m.margem)}">${PCT(m.margem)}${env10Badge(r,m)}</td>
       <td class="r num">${BRL(m.alvo)}</td>
       <td class="r" title="físico ${Math.round(+r.estoque||0)} · reservado ${Math.round(+r.reservado||0)} (CD Sankhya: Filial+Extrema)">${estBadge(r.disp)}</td>
       <td class="r num">${q30?Math.round(q30):'<span class="no">—</span>'}</td>
@@ -586,21 +623,87 @@ function canalCols(){const s={},o=[];(D.canais_disponiveis||[]).forEach(c=>{cons
 function cmCols(){const e=document.getElementById("cmEmp").value,p=document.getElementById("cmPlat").value;return canalCols().filter(c=>(!e||c.empresa===e)&&(!p||c.marketplace===p));}
 // margens por referência (menor/pior entre os canais) — para colorir prejuízo
 function refMgMap(){const m={};PR.forEach(r=>{const mg=memoria(r).margem;if(mg!=null){if(!(r.ref in m))m[r.ref]={min:mg,max:mg};else{m[r.ref].min=Math.min(m[r.ref].min,mg);m[r.ref].max=Math.max(m[r.ref].max,mg);}}});return m;}
-const CMG={ref:(g,c)=>g.ref,margem:(g,c)=>c.mg&&c.mg[g.ref]?c.mg[g.ref].min:null,conc:(g)=>g.conc?+g.conc.min:null,vsmenor:(g)=>{const o=cmOurMin(g);return (o!=null&&g.conc&&+g.conc.min>0)?(o-+g.conc.min)/+g.conc.min:null;},vsmedia:(g)=>{const o=cmOurMin(g);return (o!=null&&g.conc&&+g.conc.medio>0)?(o-+g.conc.medio)/+g.conc.medio:null;},v30:(g)=>cmV30(g.ref),disp:(g)=>((+g.estoque||0)-(+g.reservado||0))};
-function drawCM(){
+const CMG={shconc:(g)=>{const c=shConc(g.ref);return c&&c.n?c.min:null;},vsmenorsh:(g)=>{const c=shConc(g.ref),o=ourBest(g.ref,'Shopee');return (c&&c.n&&o)?(o.preco-c.min)/c.min:null;},ref:(g,c)=>g.ref,margem:(g,c)=>c.mg&&c.mg[g.ref]?c.mg[g.ref].min:null,conc:(g)=>g.conc?+g.conc.min:null,vsmenor:(g)=>{const o=cmOurMin(g);return (o!=null&&g.conc&&+g.conc.min>0)?(o-+g.conc.min)/+g.conc.min:null;},vsmedia:(g)=>{const o=cmOurMin(g);return (o!=null&&g.conc&&+g.conc.medio>0)?(o-+g.conc.medio)/+g.conc.medio:null;},v30:(g)=>cmV30(g.ref),disp:(g)=>((+g.estoque||0)-(+g.reservado||0))};
+// ===== PENDÊNCIAS =====
+function pendBuckets(){
+  const auto=(D.pendencias&&D.pendencias.auto_calc)||[];
+  const refOk=s=>/^\d{3}\.\d{3}\.\d{3}$/.test(s||"");  // ignora referência mal extraída pelo scraper
+  const semhub=[], prop=[];
+  for(const r of PR){const mm=memoria(r);const mg=mm.margem;
+    if(/SH|SHOPEE/i.test(r.plat) && !r.oid && mg!=null && mg<0.10 && refOk(r.ref)) semhub.push({r,mg,noHub:!!r.product_id});
+    if(r.hub && r.recent && !hubRefletiu(r)) prop.push({r,mg});}
+  return {auto,semhub,prop};
+}
+function updatePendBadge(){const b=document.getElementById("pendBadge");if(!b||!D)return;const {auto}=pendBuckets();const mlFora=PR.filter(r=>/ML|MERC/i.test(r.plat)&&!r.oid&&r.lid).length;const n=auto.length+mlFora;b.textContent=n;b.style.display=n?'inline-block':'none';}
+// ===== A RESOLVER (fora do hub) =====
+function updateForaBadge(){const b=document.getElementById("foraBadge");if(!b||!D)return;const n=(D.fora_hub||[]).length;b.textContent=n;b.style.display=n?'inline-block':'none';}
+function drawFora(){
+  if(!D){document.getElementById("foraBody").innerHTML='<div class="note">Carregando…</div>';return;}
+  const rows=(D.fora_hub||[]).slice();
+  const comCusto=rows.filter(r=>+r.custo>0), semCusto=rows.filter(r=>!(+r.custo>0));
+  const linha=r=>`<tr><td class="num" style="white-space:nowrap">${esc(r.ref)}</td><td><span class="badge-emp ${empCls(r.loja)}">${esc(r.loja)}</span></td><td class="r num">${r.custo>0?BRL(r.custo):'<span class="no">—</span>'}</td><td class="r num">${r.estoque!=null?Math.round(r.estoque):'—'}</td><td class="r num">${BRL(r.preco)}</td><td>${r.na_155?'<span class="yes">155</span>':''} ${r.tem_ml?'<span class="pill" style="background:rgba(93,169,255,.16);color:#5da9ff">tem ML</span>':''}</td><td>${r.url?`<a class="lnk" href="${esc(r.url)}" target="_blank" rel="noopener">Shopee ↗</a>`:''}</td></tr>`;
+  const tbl=(arr)=>`<div class="tablewrap" style="max-height:52vh"><table><thead><tr><th>Ref</th><th>Loja</th><th class="r">Custo</th><th class="r">Estoque CD</th><th class="r">Preço Shopee</th><th>Sinais</th><th>Link</th></tr></thead><tbody>${arr.map(linha).join('')||'<tr><td colspan="7" class="emp">Nenhum.</td></tr>'}</tbody></table></div>`;
+  document.getElementById("foraBody").innerHTML=`
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">🟢 Com custo — dá para onboardar (criar no Anymarket + vincular + 10%) (${comCusto.length})</div>
+      <div style="padding:10px 12px"><div class="note" style="margin-bottom:8px">Estes têm custo cadastrado. Me peça "onboarda os com custo" que eu crio o produto no Anymarket, vinculo o anúncio Shopee existente (sem duplicar) e deixo a 10%.</div>${tbl(comCusto)}</div></div>
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">🔴 Sem custo — precisa cadastrar custo no Sankhya (ou é fora de linha) (${semCusto.length})</div>
+      <div style="padding:10px 12px"><div class="note" style="margin-bottom:8px">Sem custo não há como calcular margem/10%. Cadastre o custo no Sankhya (tabela 155) ou confirme se é fora de linha. Depois eu onboardo.</div>${tbl(semCusto)}</div></div>`;
+}
+function drawPend(){
+  if(!D){document.getElementById("pendBody").innerHTML='<div class="note">Carregando…</div>';return;}
+  const {auto,semhub,prop}=pendBuckets();
+  // A — cálculo automático (gravação recusada)
+  const autoCards=auto.map(p=>{const plat=p.marketplace==='SHOPEE'?'Shopee':'ML';const alvo=(+p.preco_novo||0).toFixed(2);
+    return `<div class="detcard" style="min-width:300px;max-width:340px">
+      <div style="font-weight:700">${esc(p.ref)} · <span class="badge-plat ${platCls(plat)}">${plat}</span> · ${esc(p.conta||'')}</div>
+      <div class="calcline"><span class="l">preço 10% que tentamos</span><span class="v">${BRL(+p.preco_novo)}</span></div>
+      <div style="font-size:11px;color:var(--mut);margin:4px 0">${esc(p.motivo||'')}</div>
+      ${p.oid?`<button class="btn aprovar" data-oid="${esc(p.oid)}" data-ref="${esc(p.ref)}" data-emp="${esc(p.conta||'')}" data-plat="${plat}" data-alvo="${alvo}">Reaplicar 10%</button>`:'<span class="mg y">sem offer_id</span>'}
+    </div>`;}).join('')||'<div class="note">✓ Nenhuma gravação recusada em aberto.</div>';
+  // B — ML fora do hub (divergências): calculadas do PR (linhas ML com oid nulo)
+  const mlFora=PR.filter(r=>/ML|MERC/i.test(r.plat) && !r.oid && r.lid);
+  const mlAtivos=mlFora.filter(r=>stNorm(r.st)==='ativo');
+  const mlAntigos=mlFora.filter(r=>stNorm(r.st)!=='ativo');
+  const mlRowHtml=(r,showMg)=>{const m=memoria(r);const al=anyLink(r.product_id);return `<tr><td class="num" style="white-space:nowrap">${esc(r.ref)}</td><td><span class="badge-emp ${empCls(r.empresa)}">${esc(r.empresa)}</span></td><td>${stPill(r.st)}</td><td class="r num">${BRL(r.preco)}</td>${showMg?`<td class="r mg ${mgCls(m.margem)}">${PCT(m.margem)}</td>`:''}<td>${r.product_id?'<span class="yes">no hub</span>':'<span class="mg y">sem produto</span>'}</td><td><a class="lnk" href="${mlEdit(r.lid)}" target="_blank" rel="noopener">abrir no ML ↗</a>${al?` <a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:''}</td></tr>`;};
+  const tblML=(arr,showMg)=>`<div class="tablewrap" style="max-height:46vh"><table><thead><tr><th>Ref</th><th>Loja</th><th>Status</th><th class="r">Preço</th>${showMg?'<th class="r">Margem</th>':''}<th>Produto</th><th>Link</th></tr></thead><tbody>${arr.map(r=>mlRowHtml(r,showMg)).join('')||'<tr><td colspan="7" class="emp">Nenhum.</td></tr>'}</tbody></table></div>`;
+  const propN=prop.length;
+  document.getElementById("pendBody").innerHTML=`
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">🔒 Cálculo automático de preço — gravação recusada (${auto.length})</div>
+      <div style="padding:10px 12px"><div class="note" style="margin-bottom:8px">Anúncios com <b>preço calculado automaticamente</b> no Anymarket. Mude para <b>"Manual por anúncio"</b> em <i>Produtos → Definição de preço</i> e clique <b>Reaplicar 10%</b>.</div>
+      <div class="detgrid" style="display:flex;flex-wrap:wrap;gap:10px">${autoCards}</div></div></div>
+
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:#14315e">✅ Mercado Livre ATIVO fora do hub — VINCULAR/IMPORTAR no Anymarket (${mlAtivos.length})</div>
+      <div style="padding:10px 12px"><div class="note" style="margin-bottom:8px"><b>O que fazer:</b> estes anúncios ML estão <b>vivos</b> mas fora do hub. Vincule em <i>Anymarket → Integrações → Mercado Livre → <b>Importar anúncios existentes</b></i> (o Anymarket puxa a categoria/atributos sozinho — por API o ML exige atributos por categoria, por isso o Importar é o caminho certo). Depois de importados, eu precifico a 10%.</div>
+      ${tblML(mlAtivos,true)}</div></div>
+
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:#4a1d1d">🗑️ Mercado Livre antigos/pausados/duplicados — ENCERRAR no ML (${mlAntigos.length})</div>
+      <div style="padding:10px 12px"><div class="note" style="margin-bottom:8px"><b>O que fazer:</b> anúncios <b>parados/duplicados</b> fora do hub — não vendem e poluem a conciliação. <b>Encerre no próprio Mercado Livre</b> (abrir no ML → encerrar/excluir). <b>Não importar.</b> Vários refs têm 2–4 listings repetidos.</div>
+      ${tblML(mlAntigos,false)}</div></div>
+
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">🛒 Shopee — conciliada ✓</div>
+      <div style="padding:10px 12px"><div class="note">Os anúncios Shopee mortos (404) foram <b>removidos</b> e os vivos estão todos no hub — <b>0 fora do hub</b>. Nada a fazer aqui.</div></div></div>
+
+    <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">⏳ Em propagação — preço do Anymarket gravado, canal refletindo (${propN})</div>
+      <div style="padding:10px 12px"><div class="note">A tela já mostra o <b>preço do Anymarket</b> (margem real). O canal termina de refletir — ML ~1 min, Shopee ~15 min. Nada a fazer.</div></div></div>`;
+}
+function shScanInfo(){const el=document.getElementById('shScanInfo');if(!el)return;const n=Object.keys(D.ofertas_shopee||{}).length;const s=D.shopee_scan||{};
+  el.innerHTML=n?`🛍️ concorrência Shopee: <b>${n}</b> refs · última coleta ${s.ultimo?new Date(s.ultimo).toLocaleString('pt-BR'):'—'}`:`<span class="mg y" title="${esc(s.ultimo_erro||'')}">🛍️ concorrência Shopee: coleta aguardando credencial de afiliado Shopee — por ora use "buscar ↗" no detalhe</span>`;}
+function drawCM(){shScanInfo();
   const q=norm(document.getElementById("qcm").value);
   const emp=document.getElementById("cmEmp").value, plat=document.getElementById("cmPlat").value, linha=document.getElementById("cmLinha").value;
   const cols=cmCols();
   const RM=refMgMap();
   const prIdx={},refSt={};PR.forEach(r=>{const mk=r.plat==='ML'?'MERCADO_LIVRE':(r.plat==='Shopee'?'SHOPEE':r.plat);const k=mk+'|'+r.empresa;(prIdx[r.ref]=prIdx[r.ref]||{});const cur=prIdx[r.ref][k];if(!cur||(+r.preco>0&&stNorm(r.st)==='ativo'))prIdx[r.ref][k]={preco:r.preco,st:r.st};(refSt[r.ref]=refSt[r.ref]||new Set()).add(stNorm(r.st));});
   const arr=k=>k===cmSK?` <span class="arr">${cmSD<0?'▼':'▲'}</span>`:'';
-  document.querySelector("#tCM thead").innerHTML=`<tr><th class="sortable" data-sk="ref">Ref${arr('ref')}</th><th>Descrição</th><th class="r sortable" data-sk="margem" title="Pior margem entre os canais da referência">Margem${arr('margem')}</th>`+cols.map(c=>`<th class="r ${c.marketplace==='MERCADO_LIVRE'?'mk-ML':'mk-SH'}">${esc(platShort(c.marketplace))}<br><span style="font-weight:400;text-transform:none">${esc(c.empresa)}</span></th>`).join("")+`<th class="r sortable" data-sk="conc">Conc.${arr('conc')}</th><th class="r sortable" data-sk="vsmenor">vs menor${arr('vsmenor')}</th><th class="r sortable" data-sk="vsmedia">vs média${arr('vsmedia')}</th><th class="r sortable" data-sk="v30" title="Unidades vendidas em 30 dias">Vendas 30d${arr('v30')}</th><th class="r sortable" data-sk="disp" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD${arr('disp')}</th></tr>`;
+  document.querySelector("#tCM thead").innerHTML=`<tr><th class="sortable" data-sk="ref">Ref${arr('ref')}</th><th>Descrição</th><th class="r sortable" data-sk="margem" title="Pior margem entre os canais da referência">Margem${arr('margem')}</th>`+cols.map(c=>`<th class="r ${c.marketplace==='MERCADO_LIVRE'?'mk-ML':'mk-SH'}">${esc(platShort(c.marketplace))}<br><span style="font-weight:400;text-transform:none">${esc(c.empresa)}</span></th>`).join("")+`<th class="r sortable mk-ML" data-sk="conc">Conc. ML${arr('conc')}</th><th class="r sortable" data-sk="vsmenor" title="nosso menor preço ATIVO no ML vs menor concorrente ML">vs menor ML${arr('vsmenor')}</th><th class="r sortable" data-sk="vsmedia">vs média ML${arr('vsmedia')}</th><th class="r sortable mk-SH" data-sk="shconc">Conc. Shopee${arr('shconc')}</th><th class="r sortable" data-sk="vsmenorsh" title="nosso menor preço ATIVO na Shopee vs menor concorrente Shopee">vs menor Shopee${arr('vsmenorsh')}</th><th class="r sortable" data-sk="v30" title="Unidades vendidas em 30 dias">Vendas 30d${arr('v30')}</th><th class="r sortable" data-sk="disp" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD${arr('disp')}</th></tr>`;
   let rows=D.grupos.filter(g=>{
     if(!prIdx[g.ref] && !(g.canais||[]).length) return false;
     if(linha && g.linha!==linha) return false;
     if(q && !(norm(g.ref).includes(q)||norm(g.descr).includes(q))) return false;
     if(cols.length){const has=cols.some(c=>{const key=c.marketplace+'|'+c.empresa;return (prIdx[g.ref]&&prIdx[g.ref][key])||(g.canais||[]).some(ch=>ch.marketplace===c.marketplace&&(ch.empresa||'')===c.empresa);});if(!has) return false;}
     if(fcm==="conc") return !!g.conc;
+    if(fcm==="concsh"){const c=shConc(g.ref);return !!(c&&c.n);}
+    if(fcm==="acimash"){const c=shConc(g.ref),o=ourBest(g.ref,'Shopee');return !!(c&&c.n&&o&&o.preco>c.min);}
     if(fcm==="acima"){const al=Object.values(prIdx[g.ref]||{}).filter(x=>+x.preco>0);const at=al.filter(x=>stNorm(x.st)==='ativo');const ps=(at.length?at:al).map(x=>+x.preco);const o=ps.length?Math.min(...ps):cmOurMin(g);return g.conc&&o!=null&&o>+g.conc.min;}
     if(fcm==="baixou") return !!AL[g.ref];
     if(fcm==="ativos") return refSt[g.ref]&&refSt[g.ref].has("ativo");
@@ -612,7 +715,7 @@ function drawCM(){
   });
   if(cmSK&&CMG[cmSK]){const f=CMG[cmSK];rows=rows.slice().sort((a,b)=>{let va=f(a,{mg:RM}),vb=f(b,{mg:RM});if(typeof va==='string')return cmSD*va.localeCompare(vb);return cmSD*((va==null?-1e15:va)-(vb==null?-1e15:vb));});}
   document.getElementById("cntCM").textContent=rows.length+" referências";
-  const span=cols.length+8;
+  const span=cols.length+10;
   document.querySelector("#tCM tbody").innerHTML=rows.slice(0,500).map(g=>{
     const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');const k=ch.marketplace+'|'+e;if(!m2[k]||ch.status==='active')m2[k]=ch;});
     const pix=prIdx[g.ref]||{};
@@ -620,13 +723,49 @@ function drawCM(){
     const mm=RM[g.ref];const mgTd=mm?`<td class="r mg ${mgCls(mm.min)}" title="pior canal">${PCT(mm.min)}</td>`:'<td class="r no">—</td>';
     const cc=g.conc?`<span class="num">${BRL(g.conc.min)}</span>–${BRL(g.conc.max)} <span class="pill" style="background:rgba(227,133,59,.16);color:var(--con)">${g.conc.ofertas}</span>`:'<span class="no">—</span>';
     const ourAll=Object.values(pix).filter(x=>+x.preco>0);const ourAt=ourAll.filter(x=>stNorm(x.st)==='ativo');const ourP=(ourAt.length?ourAt:ourAll).map(x=>+x.preco);const our=ourP.length?Math.min(...ourP):cmOurMin(g);
-    const dMenor=g.conc?diffCell(our,g.conc.min):'<td class="r no">—</td>';
-    const dMedia=g.conc?diffCell(our,g.conc.medio):'<td class="r no">—</td>';
+    const oML=ourBest(g.ref,'ML'), oSH=ourBest(g.ref,'Shopee'); const ourML=oML?oML.preco:our;
+    const dMenor=g.conc?diffCell(ourML,g.conc.min):'<td class="r no">—</td>';
+    const dMedia=g.conc?diffCell(ourML,g.conc.medio):'<td class="r no">—</td>';
+    const sc=shConc(g.ref);
+    const ccSh=sc&&sc.n?`<span class="num">${BRL(sc.min)}</span>–${BRL(sc.max)} <span class="pill" style="background:rgba(238,90,58,.16);color:#f3a08d">${sc.n}</span>`:'<span class="no">—</span>';
+    const dMenorSh=(sc&&sc.n&&oSH)?diffCell(oSH.preco,sc.min):'<td class="r no">—</td>';
     const v30=cmV30(g.ref);
-    return `<tr class="click"><td class="num" style="white-space:nowrap">${fotoImg(g.foto,30)} ${esc(g.ref)}${g.is_kit?' <span class="pill pkit">KIT</span>':''}${AL[g.ref]?` <span class="pill" style="background:rgba(227,133,59,.22);color:var(--con)" title="concorrente baixou preço (7d)">🔻${AL[g.ref].n}</span>`:''}</td><td class="desc" title="${esc(g.descr||'')}">${esc((g.descr||'').slice(0,34))}</td>${mgTd}${tds}<td class="r">${cc}</td>${dMenor}${dMedia}<td class="r num">${v30?Math.round(v30):'<span class="no">—</span>'}</td><td class="r" title="físico ${Math.round(+g.estoque||0)} · reservado ${Math.round(+g.reservado||0)}">${estBadge((+g.estoque||0)-(+g.reservado||0))}</td></tr>
+    return `<tr class="click"><td class="num" style="white-space:nowrap">${fotoImg(g.foto,30)} ${esc(g.ref)}${g.is_kit?' <span class="pill pkit">KIT</span>':''}${AL[g.ref]?` <span class="pill" style="background:rgba(227,133,59,.22);color:var(--con)" title="concorrente baixou preço (7d)">🔻${AL[g.ref].n}</span>`:''}</td><td class="desc" title="${esc(g.descr||'')}">${esc((g.descr||'').slice(0,34))}</td>${mgTd}${tds}<td class="r">${cc}</td>${dMenor}${dMedia}<td class="r">${ccSh}</td>${dMenorSh}<td class="r num">${v30?Math.round(v30):'<span class="no">—</span>'}</td><td class="r" title="físico ${Math.round(+g.estoque||0)} · reservado ${Math.round(+g.reservado||0)}">${estBadge((+g.estoque||0)-(+g.reservado||0))}</td></tr>
       <tr class="detrow" hidden><td colspan="${span}">${cmDetail(g)}</td></tr>`;
   }).join("")||`<tr><td colspan="${span}" class="emp">Nada encontrado.</td></tr>`;
   window._cmRows=rows;
+}
+// ===== comparativo de concorrência POR PLATAFORMA (ML × Shopee) =====
+const shSearch=q=>'https://shopee.com.br/search?keyword='+encodeURIComponent(q||'');
+const mlSearch=q=>'https://lista.mercadolivre.com.br/'+encodeURIComponent(String(q||'').replace(/\s+/g,'-'));
+const kwOf=g=>String(g.descr||g.ref||'').replace(/\(.*?\)/g,' ').replace(/[-–]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,6).join(' ');
+function shConc(ref){const o=(D.ofertas_shopee&&D.ofertas_shopee[ref])||null;if(!o)return null;const of=(o.ofertas||[]).filter(x=>!x.eh_nosso&&+x.preco>0);if(!of.length)return {n:0,em:o.em,ofertas:[]};const ps=of.map(x=>+x.preco);return {n:of.length,min:Math.min(...ps),max:Math.max(...ps),medio:ps.reduce((a,b)=>a+b,0)/ps.length,em:o.em,ofertas:of};}
+function mlConcOf(ref){const of=((D.ofertas&&D.ofertas[ref])||[]).filter(o=>!o.eh_nitron&&+o.preco>0);if(!of.length)return null;const ps=of.map(o=>+o.preco);return {n:of.length,min:Math.min(...ps),max:Math.max(...ps),medio:ps.reduce((a,b)=>a+b,0)/ps.length,ofertas:of};}
+// nosso melhor preço por plataforma (prioriza anúncio ATIVO) + a linha do PR p/ calcular margem
+// Shopee: compara pelo preço AO VIVO na loja (preco_real) — é o que o cliente vê; o preço do hub aparece à parte se divergir
+const livePreco=r=>(r.plat==='Shopee'&&+r.preco_real>0)?+r.preco_real:+r.preco;
+function ourBest(ref,plat){const rs=PR.filter(r=>r.ref===ref&&r.plat===plat&&livePreco(r)>0);if(!rs.length)return null;const at=rs.filter(r=>stNorm(r.st)==='ativo');const pool=at.length?at:rs;const r=pool.slice().sort((a,b)=>livePreco(a)-livePreco(b))[0];const pv=livePreco(r);return {r,preco:pv,hub:(+r.preco>0&&Math.abs(+r.preco-pv)>0.01)?+r.preco:null,ativo:at.length>0};}
+function platCompareCard(g){
+  const kw=kwOf(g);
+  const plats=[{k:'ML',nome:'Mercado Livre',cls:'mk-ML',conc:mlConcOf(g.ref)||(g.conc?{n:g.conc.ofertas,min:+g.conc.min,max:+g.conc.max,medio:+g.conc.medio,ofertas:[]}:null),busca:mlSearch(kw)},
+               {k:'Shopee',nome:'Shopee',cls:'mk-SH',conc:shConc(g.ref),busca:shSearch(kw)}];
+  const linha=pl=>{const o=ourBest(g.ref,pl.k);const c=pl.conc;
+    const mgAt=o?margemEm(o.r,o.preco):null; const mgMin=(o&&c&&c.min)?margemEm(o.r,c.min):null;
+    const vs=(o&&c&&c.min)?(o.preco-c.min)/c.min:null;
+    return `<tr><td class="${pl.cls}" style="font-weight:700">${pl.nome}</td>
+      <td class="r num">${o?BRL(o.preco)+(o.ativo?'':' <span class="pill p-mut">'+esc(stLabel(o.r.st))+'</span>')+'<div style="font-size:10px;color:var(--mut)">'+esc(o.r.empresa)+(o.hub?' · <span class="mg y" title="preço no Anymarket diferente do que está na loja">hub '+BRL(o.hub)+'</span>':'')+'</div>':'<span class="no">sem anúncio</span>'}</td>
+      <td class="r num">${c&&c.min?BRL(c.min):'—'}</td><td class="r num">${c&&c.medio?BRL(c.medio):'—'}</td><td class="r num">${c&&c.max?BRL(c.max):'—'}</td><td class="r num">${c?c.n:'—'}</td>
+      <td class="r num ${vs==null?'':vs>0.005?'mg r':vs<-0.005?'yes':''}">${vs==null?'—':(vs>=0?'+':'')+PCT(vs)}</td>
+      <td class="r ${mgCls(mgAt)}">${PCT(mgAt)}</td><td class="r ${mgCls(mgMin)}" title="margem se igualar o menor concorrente desta plataforma">${PCT(mgMin)}</td>
+      <td><a class="lnk" href="${pl.busca}" target="_blank" rel="noopener">buscar ↗</a></td></tr>`;};
+  const lista=(pl)=>{const c=pl.conc;if(!c||!(c.ofertas||[]).length)return pl.k==='Shopee'?`<div class="emp" style="font-size:11px">${D.ofertas_shopee&&Object.keys(D.ofertas_shopee).length?'Sem concorrente Shopee coletado p/ esta referência.':'Coleta de concorrência Shopee ainda não ativa'} — <a class="lnk" href="${pl.busca}" target="_blank" rel="noopener">ver busca na Shopee ↗</a></div>`:'';
+    return c.ofertas.slice(0,8).map(o=>`<div class="calcline"><span class="l">${esc(((o.loja||o.seller||'')+'').slice(0,22))}${o.oficial?' ⭐':''}${o.vendidos?` <span style="color:var(--mut);font-size:10px">${o.vendidos} vend.</span>`:''}</span><span class="v">${BRL(o.preco)} ${o.url?`<a class="lnk" href="${esc(o.url)}" target="_blank" rel="noopener" title="${esc(o.nome||o.titulo||'')}">ver ↗</a>`:''}</span></div>`).join('');};
+  return `<div class="detcard" style="min-width:min(100%,640px);flex:1 1 640px"><h5 style="color:var(--con)">⚖️ Concorrência por plataforma — Mercado Livre × Shopee</h5>
+    <div style="overflow:auto"><table style="font-size:12px"><thead><tr><th>Plataforma</th><th class="r">Nosso (ativo)</th><th class="r">Conc. mín</th><th class="r">Médio</th><th class="r">Máx</th><th class="r">Ofertas</th><th class="r">vs menor</th><th class="r">Margem atual</th><th class="r">Margem no menor</th><th></th></tr></thead><tbody>${plats.map(linha).join('')}</tbody></table></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+      <div style="flex:1;min-width:250px"><div class="mk-ML" style="font-size:11px;font-weight:700;margin-bottom:3px">Ofertas concorrentes · Mercado Livre</div>${lista(plats[0])||'<div class="emp" style="font-size:11px">sem concorrente monitorado</div>'}</div>
+      <div style="flex:1;min-width:250px"><div class="mk-SH" style="font-size:11px;font-weight:700;margin-bottom:3px">Ofertas concorrentes · Shopee${plats[1].conc&&plats[1].conc.em?` <span style="color:var(--mut);font-weight:400">(coletado ${new Date(plats[1].conc.em).toLocaleDateString('pt-BR')})</span>`:''}</div>${lista(plats[1])}</div>
+    </div></div>`;
 }
 function cmDetail(g){
   // memória de cálculo COMPLETA por canal — mesma fonte da Precificação (todas as linhas do PR desta referência)
@@ -635,12 +774,20 @@ function cmDetail(g){
   const rep=prs[0]||null;
   const espCard=rep?especialista(rep):'';
   const iaBtn=`<div style="display:flex;flex-direction:column;gap:8px"><button class="btn ia" data-ref="${esc(g.ref)}" style="background:transparent;border:1px solid var(--ac);color:var(--ac)">🧠 Análise IA do anúncio</button><button class="btn img" data-ref="${esc(g.ref)}" data-titulo="${esc(g.descr||'')}" data-pid="${esc(g.product_id||'')}" style="background:transparent;border:1px solid var(--con);color:var(--con)">🖼️ Gerar imagem</button></div>`;
-  return `<div class="detr">${alertCard(g)}${fotoCard(g)}${chCards}${comparativoCard(g)}${espCard}${iaBtn}</div>`;
+  return `<div class="detr">${alertCard(g)}${fotoCard(g)}${platCompareCard(g)}${chCards}${comparativoCard(g)}${espCard}${iaBtn}</div>`;
 }
 
 /* ===== CRIAR ===== */
 let fc2="todos";
-function criarPronto(x){return !!(x.tem_foto && x.ean && +x.preco_sugerido>0 && x.tem_cat);}
+function criarPronto(x){return !!(x.tem_foto && x.ean && x.tem_cat);}  // preço é definido no cadastro (tabela 135/montar)
+function catCell(x){
+  if(x.categoria_grupo){
+    if(x.categoria_visao && x.visao_ok===false) return esc(x.categoria_grupo)+` <span class="pill" style="background:#b45309;color:#fff" title="A IA olhou a foto e sugere '${esc(x.categoria_visao)}'">⚠️ IA: ${esc(x.categoria_visao)}</span>`;
+    if(x.visao_ok===true) return esc(x.categoria_grupo)+' <span class="yes" title="IA confirmou pela foto">✓IA</span>';
+    return esc(x.categoria_grupo);
+  }
+  return x.categoria_visao?`<span class="pill" style="background:#1d4ed8;color:#fff" title="sem grupo no Sankhya — IA sugeriu pela foto">IA: ${esc(x.categoria_visao)}</span>`:'<span class="mg y">definir</span>';
+}
 function drawCriar(){
   const q=document.getElementById("qc").value.trim().toLowerCase();
   const rows=D.criar.filter(x=>{
@@ -648,45 +795,50 @@ function drawCriar(){
     if(fc2==="pronto"&&!criarPronto(x))return false;
     if(fc2==="semfoto"&&x.tem_foto)return false;
     if(fc2==="semean"&&x.ean)return false;
+    if(fc2==="revcat"&&!(x.categoria_visao&&x.visao_ok===false||!x.categoria_grupo))return false;
     if(fc2==="semestoque"&&!(x.disp!=null&&+x.disp<=0))return false;
     const hf=HF.criar;
     if(hf.est&&estFx(x.disp==null?null:+x.disp)!==hf.est)return false;
-    if(hf.cat&&(x.categoria_nome||'')!==hf.cat)return false;
+    if(hf.cat&&(x.categoria_grupo||'')!==hf.cat)return false;
     if(hf.ean&&(hf.ean==='sim')!==!!x.ean)return false;
     if(hf.pronto&&(hf.pronto==='sim')!==criarPronto(x))return false;
     return true;
   });
   document.getElementById("cntC").textContent=rows.length+" candidatos";
-  document.querySelector("#tCriar thead").innerHTML='<tr><th>Foto</th><th>Ref</th><th>Título</th><th>Categoria'+hdrSel('criar','cat',uniqOpts(D.criar.map(x=>x.categoria_nome)))+'</th><th class="r">Preço sug.</th><th class="r" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD'+hdrSel('criar','est',EST_OPTS)+'</th><th>EAN'+hdrSel('criar','ean',[['sim','com EAN'],['nao','sem EAN']])+'</th><th>Pré-requisitos'+hdrSel('criar','pronto',[['sim','pronto'],['nao','falta algo']])+'</th></tr>';
+  document.querySelector("#tCriar thead").innerHTML='<tr><th>Foto</th><th>Ref</th><th>Título</th><th>Categoria (grupo Sankhya)'+hdrSel('criar','cat',uniqOpts(D.criar.map(x=>x.categoria_grupo)))+'</th><th class="r">Fotos</th><th class="r" title="Estoque CD disponível (Sankhya: Filial+Extrema − reservado)">Estoque CD'+hdrSel('criar','est',EST_OPTS)+'</th><th>EAN'+hdrSel('criar','ean',[['sim','com EAN'],['nao','sem EAN']])+'</th><th>Pré-requisitos'+hdrSel('criar','pronto',[['sim','pronto'],['nao','falta algo']])+'</th></tr>';
   window._criarRows=rows;
   document.querySelector("#tCriar tbody").innerHTML=rows.slice(0,400).map((x,i)=>{
     const pronto=criarPronto(x);
-    const motivos=[]; if(!x.tem_foto)motivos.push('foto'); if(!x.ean)motivos.push('EAN'); if(!(+x.preco_sugerido>0))motivos.push('preço'); if(!x.tem_cat)motivos.push('categoria');
+    const motivos=[]; if(!x.tem_foto)motivos.push('foto'); if(!x.ean)motivos.push('EAN'); if(!x.tem_cat)motivos.push('categoria');
     const st=pronto?'<span class="yes">pronto ✓</span>':'<span class="mg r">falta '+motivos.join(', ')+'</span>';
     return `<tr class="click" data-cr="${i}">
       <td>${x.foto?`<img src="${esc(x.foto)}" alt="" style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:5px">`:'<span class="no">—</span>'}</td>
       <td class="num" style="white-space:nowrap">${esc(x.ref)}</td>
       <td class="desc" title="${esc(x.titulo||x.descrprod||'')}">${esc((x.titulo||x.descrprod||'').slice(0,55))}</td>
-      <td>${esc(x.categoria_nome||'—')}</td>
-      <td class="r num" style="color:var(--ac)">${BRL(x.preco_sugerido)}</td>
-      <td class="r" title="físico ${x.estoque_cd==null?'—':Math.round(+x.estoque_cd)} · reservado ${x.reservado==null?'—':Math.round(+x.reservado)}">${x.disp!=null?estBadge(+x.disp):(x.estoque_disp==null?'<span class="no">—</span>':estBadge(+x.estoque_disp))}</td>
+      <td>${catCell(x)}</td>
+      <td class="r num">${+x.n_fotos>1?('<b>'+x.n_fotos+'</b>'):(x.n_fotos||(x.tem_foto?1:0))}</td>
+      <td class="r" title="físico ${x.estoque_cd==null?'—':Math.round(+x.estoque_cd)} · reservado ${x.reservado==null?'—':Math.round(+x.reservado)}">${x.disp!=null?estBadge(+x.disp):(x.estoque_cd==null?'<span class="no">—</span>':estBadge(+x.estoque_cd))}</td>
       <td>${x.ean?'<span class="yes">●</span>':'<span class="mg r">sem</span>'}</td>
       <td>${st}</td></tr>
       <tr class="detrow" hidden><td colspan="8">${criarDetail(x,pronto,motivos)}</td></tr>`;
   }).join("")||'<tr><td colspan="8" class="emp">Nada encontrado.</td></tr>';
 }
 function criarDetail(x,pronto,motivos){
-  const img=x.foto?`<div class="detcard" style="text-align:center;min-width:170px"><img src="${esc(x.foto)}" alt="" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px"><div style="font-size:10px;color:var(--mut);margin-top:3px">${x.n_fotos||0} foto(s)</div></div>`:'<div class="detcard" style="min-width:150px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px">sem foto</div>';
-  const info=`<div class="detcard" style="min-width:240px"><h5>${esc(x.ref)}</h5>
+  const img=x.foto?`<div class="detcard" style="text-align:center;min-width:170px"><img src="${esc(x.foto)}" alt="" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px"><div style="font-size:10px;color:var(--mut);margin-top:3px">${+x.n_fotos>1?('📸 '+x.n_fotos+' fotos no banco'):(x.tem_foto?'1 foto':'sem foto')}</div></div>`:'<div class="detcard" style="min-width:150px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px">sem foto</div>';
+  const iaLinha = x.categoria_visao
+    ? `<div class="calcline"><span class="l">IA (pela foto)</span><span class="v ${x.visao_ok===false?'mg r':'yes'}">${esc(x.categoria_visao)}${x.visao_conf!=null?(' · '+Math.round(x.visao_conf*100)+'%'):''}${x.visao_ok===false?' ⚠ difere':' ✓'}</span></div>`
+    : `<div class="calcline"><span class="l">IA (pela foto)</span><span class="v"><button class="btn visaoCat" data-ref="${esc(x.ref)}" style="padding:2px 8px;font-size:11px;background:transparent;border:1px solid var(--ac);color:var(--ac)">🔎 conferir categoria</button></span></div>`;
+  const info=`<div class="detcard" style="min-width:250px"><h5>${esc(x.ref)}</h5>
     <div class="calcline"><span class="l">Título</span><span class="v">${esc((x.titulo||x.descrprod||'').slice(0,42))}</span></div>
-    <div class="calcline"><span class="l">Categoria (ML)</span><span class="v">${esc(x.categoria_nome||'—')}</span></div>
-    <div class="calcline"><span class="l">Preço sugerido</span><span class="v">${BRL(x.preco_sugerido)}</span></div>
-    <div class="calcline"><span class="l">Estoque CD (disp.)</span><span class="v">${x.disp!=null?Math.round(+x.disp):(x.estoque_disp==null?'—':Number(x.estoque_disp))}${x.estoque_cd!=null?' <span style="color:var(--mut);font-weight:400">(físico '+Math.round(+x.estoque_cd)+' − reserv. '+Math.round(+x.reservado||0)+')</span>':''}</span></div>
+    <div class="calcline"><span class="l">Categoria (grupo Sankhya)</span><span class="v">${x.categoria_grupo?esc(x.categoria_grupo):'<span class="mg y">definir</span>'}</span></div>
+    ${iaLinha}
+    <div class="calcline"><span class="l">Linha</span><span class="v">${esc(x.linha||'—')}</span></div>
+    <div class="calcline"><span class="l">Estoque CD (disp.)</span><span class="v">${x.disp!=null?Math.round(+x.disp):(x.estoque_cd==null?'—':Number(x.estoque_cd))}${x.estoque_cd!=null?' <span style="color:var(--mut);font-weight:400">(físico '+Math.round(+x.estoque_cd)+' − reserv. '+Math.round(+x.reservado||0)+')</span>':''}</span></div>
     <div class="calcline"><span class="l">EAN</span><span class="v">${esc(x.ean||'—')}</span></div></div>`;
   const imgBtn=`<button class="btn img" data-ref="${esc(x.ref)}" data-titulo="${esc(x.titulo||x.descrprod||'')}" style="background:transparent;border:1px solid var(--con);color:var(--con)">🖼️ Gerar imagem</button>`;
   const mcpBtn=`<button class="btn mcpMontar" data-ref="${esc(x.ref)}" data-busca="${esc(x.descrprod||x.titulo||x.ref)}" style="background:var(--ac);color:#fff">🏭 Cadastrar no Anymarket</button>`;
   const acao=pronto
-    ?`<div class="detcard" style="min-width:300px"><h5 style="color:#58c27d">Pronto p/ cadastro ✓</h5><div style="font-size:12px;line-height:1.5">Cadastro vai pelo <b>Sankhya → Anymarket</b> (sem duplicar). Monta a proposta, você revisa o preço e publica.</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${mcpBtn}${imgBtn}</div><div class="mcpOut" style="margin-top:8px"></div></div>`
+    ?`<div class="detcard" style="min-width:300px"><h5 style="color:#58c27d">Pronto p/ cadastro ✓</h5><div style="font-size:12px;line-height:1.5">Cadastro vai pelo <b>Sankhya → Anymarket</b> (sem duplicar). Monta a proposta, você revisa o preço e publica. A categoria do grupo Sankhya é a usada; a IA confere pela foto.</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${mcpBtn}${imgBtn}</div><div class="mcpOut" style="margin-top:8px"></div></div>`
     :`<div class="detcard" style="min-width:220px"><h5 style="color:var(--con)">Falta p/ cadastrar</h5><div style="font-size:12px;line-height:1.6">${motivos.map(m=>'• '+m).join('<br>')}</div>${!x.tem_foto?`<div style="margin-top:8px">${imgBtn}</div>`:''}</div>`;
   return `<div class="detr">${img}${info}${acao}</div>`;
 }
@@ -723,7 +875,11 @@ let fco="todos", fEmp="", fPlat="", verTodas=false;
 function matrizData(){
   const plats=verTodas?D.plataformas.map(p=>p.code):D.plataformas.filter(p=>p.principal).map(p=>p.code);
   const out={};
-  D.empresas.forEach(emp=>{out[emp]=plats.map(code=>{const a=D.any_counts.find(r=>r.empresa===emp&&r.marketplace===code);const real=code==='MERCADO_LIVRE'?(D.real_counts.find(r=>r.empresa===emp)||{}).refs:null;return {code,nome:platNome(code),integrado:!!a,refs_any:a?a.refs:0,anuncios_any:a?a.anuncios:0,refs_real:real!=null?real:null};});});
+  D.empresas.forEach(emp=>{out[emp]=plats.map(code=>{const a=D.any_counts.find(r=>r.empresa===emp&&r.marketplace===code);
+    let refs_real=null,fora=null;
+    if(code==='MERCADO_LIVRE'){refs_real=(D.real_counts.find(r=>r.empresa===emp)||{}).refs; if(refs_real==null)refs_real=null;}
+    else if(code==='SHOPEE'){const sc=(D.shopee_counts||[]).find(r=>r.empresa===emp); if(sc){refs_real=+sc.raspadas; fora=+sc.fora_hub;}}
+    return {code,nome:platNome(code),integrado:!!a,refs_any:a?a.refs:0,anuncios_any:a?a.anuncios:0,refs_real:refs_real!=null?refs_real:null,fora};});});
   return out;
 }
 function renderMatriz(){
@@ -732,7 +888,12 @@ function renderMatriz(){
     h+=`<div class="grp"><div class="ghead" style="cursor:default"><span class="ref" style="font-size:14px">🏢 ${esc(emp)}</span><span class="ds">base Tabela Sankhya: ${D.resumo.na_155} · no Anymarket: ${D.resumo.no_any}</span></div><div style="padding:10px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">`;
     md[emp].forEach(m=>{
       if(m.integrado){const dif=m.refs_real!=null?(m.refs_real-m.refs_any):null;
-        h+=`<div class="chn"><div class="cl ${/MERCADO/.test(m.code)?'mk-ML':/SHOPEE/.test(m.code)?'mk-SH':''}"><span class="dotA d-active"></span>${esc(m.nome)}</div><div style="font-size:12px"><b class="num">${m.refs_any}</b> refs · <span class="num">${m.anuncios_any}</span> an.</div>${m.refs_real!=null?`<div style="font-size:11px;color:var(--mut)">real: <b class="num">${m.refs_real}</b>${dif>0?` · <span class="mg r">${dif} fora</span>`:dif<0?` · <span class="mg y">${-dif} só Any</span>`:' ✓'}</div>`:''}</div>`;
+        let det='';
+        if(m.refs_real!=null){
+          if(m.fora!=null){det=m.fora>0?` · <span class="mg r" title="anúncios reais na Shopee sem anúncio no Anymarket (só referências válidas; ruído do scraper já excluído)">${m.fora} fora do hub</span>`:' ✓';}
+          else{det=dif>0?` · <span class="mg r">${dif} fora</span>`:dif<0?` · <span class="mg y">${-dif} só Any</span>`:' ✓';}
+        }
+        h+=`<div class="chn"><div class="cl ${/MERCADO/.test(m.code)?'mk-ML':/SHOPEE/.test(m.code)?'mk-SH':''}"><span class="dotA d-active"></span>${esc(m.nome)}</div><div style="font-size:12px"><b class="num">${m.refs_any}</b> refs · <span class="num">${m.anuncios_any}</span> an.</div>${m.refs_real!=null?`<div style="font-size:11px;color:var(--mut)">real: <b class="num">${m.refs_real}</b>${det}</div>`:''}</div>`;
       }else{h+=`<div class="chn" style="opacity:.6;border-style:dashed;border-color:var(--warn)"><div class="cl" style="color:var(--warn)"><span class="dotA d-none"></span>${esc(m.nome)}</div><div style="font-size:12px;color:var(--warn)">0 — a integrar</div></div>`;}
     });
     h+='</div></div>';
@@ -1115,6 +1276,17 @@ document.addEventListener('click',async e=>{
 /* ===== CADASTRO via MCP (Sankhya -> Anymarket) ===== */
 let MCPM={};
 function mcpCores(d){return (d.skus||d.familia||d.variacoes||[]).map(s=>({codProd:s.codProd||s.cod_prod||s.CODPROD,ref:s.referencia||s.ref||s.REFERENCIA,cor:s.corNome||s.cor||s.descricaoCor||'',idCor:s.idCor||s.id_cor}));}
+// IA confere a categoria de 1 item pela foto
+document.addEventListener("click",async e=>{
+  const vb=e.target.closest(".visaoCat"); if(!vb) return;
+  const ref=vb.dataset.ref; vb.disabled=true; vb.textContent="🔎 analisando…";
+  try{const r=await fetch(FN+"/comando-cat-visao?secret="+SECRET+"&acao=uma&ref="+encodeURIComponent(ref),{headers:HJ});const d=await r.json();
+    if(d.error){vb.textContent="erro: "+esc(d.error);vb.disabled=false;return;}
+    const x=(D.criar||[]).find(c=>c.ref===ref); if(x){x.categoria_visao=d.categoria_visao;x.visao_conf=d.confianca;x.visao_ok=d.concorda;}
+    const span=vb.parentElement; span.className="v "+(d.concorda===false?"mg r":"yes");
+    span.innerHTML=esc(d.categoria_visao||'?')+(d.confianca!=null?(' · '+Math.round(d.confianca*100)+'%'):'')+(d.concorda===false?' ⚠ difere do grupo':' ✓ confirma');
+  }catch(err){vb.textContent="falha";vb.disabled=false;}
+});
 document.addEventListener("click",async e=>{
   const mb=e.target.closest(".mcpMontar");
   if(mb){ const ref=mb.dataset.ref, busca=mb.dataset.busca; const out=mb.closest(".detcard").querySelector(".mcpOut");
@@ -1198,7 +1370,7 @@ function fillEmpSel(id){document.getElementById(id).innerHTML='<option value="">
 function fillPlatAny(id){document.getElementById(id).innerHTML='<option value="">Todas as plataformas</option>'+[...new Set(D.canais_disponiveis.map(c=>c.marketplace))].map(mp=>`<option value="${esc(mp)}">${esc(platShort(mp))}</option>`).join("");}
 
 /* ===== eventos ===== */
-document.getElementById("tabs").addEventListener("click",e=>{const t=e.target.closest(".tab");if(!t)return;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));["prec","cm","criar","rev","conc","vendas","catalogo","conflitos","taxas"].forEach(id=>document.getElementById(id).classList.toggle("hide",id!==t.dataset.t));if(t.dataset.t==='catalogo'&&!CT)loadCatalogo();if(t.dataset.t==='conflitos'&&!CF)loadConflitos();});
+document.getElementById("tabs").addEventListener("click",e=>{const t=e.target.closest(".tab");if(!t)return;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));["prec","pend","cm","criar","rev","conc","vendas","catalogo","conflitos","taxas"].forEach(id=>document.getElementById(id).classList.toggle("hide",id!==t.dataset.t));if(t.dataset.t==='catalogo'&&!CT)loadCatalogo();if(t.dataset.t==='pend')drawPend();if(t.dataset.t==='conflitos'&&!CF)loadConflitos();});
 function bindFilters(sel,setter,getter){document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{document.querySelectorAll(sel).forEach(x=>x.classList.remove("on"));b.classList.add("on");setter(b.dataset);getter();});}
 bindFilters("#prec .tag[data-f]",d=>fP=d.f,drawPrec);
 bindFilters("#conc .tag[data-fco]",d=>fco=d.fco,drawConc);
@@ -1224,7 +1396,19 @@ document.getElementById("cmEmp").onchange=drawCM;document.getElementById("cmPlat
 bindFilters("#cm .tag[data-fcm]",d=>fcm=d.fcm,drawCM);
 fetch(FN+"/comando-alertas?secret="+SECRET,{headers:HJ}).then(r=>r.json()).then(d=>{AL=d.alertas||{};if(typeof drawCM==='function'&&D)drawCM();}).catch(()=>{});
 bindFilters("#criar .tag[data-fc2]",d=>fc2=d.fc2,drawCriar);
-document.getElementById("xlCriar").onclick=function(){const head=["Ref","Título","Categoria","Preço sug.","Estoque CD disp.","Físico","Reservado","EAN","Pronto"];const data=(window._criarRows||D.criar).map(x=>[x.ref,x.titulo||x.descrprod,x.categoria_nome,x.preco_sugerido,x.disp!=null?x.disp:x.estoque_disp,x.estoque_cd,x.reservado,x.ean||"",criarPronto(x)?"sim":"não"]);copyExcel(head,data,this);};
+document.getElementById("xlCriar").onclick=function(){const head=["Ref","Título","Categoria (grupo)","IA (foto)","Fotos","Estoque CD físico","Reservado","Disponível","EAN","Pronto"];const data=(window._criarRows||D.criar).map(x=>[x.ref,x.titulo||x.descrprod,x.categoria_grupo||"",x.categoria_visao||"",x.n_fotos||0,x.estoque_cd,x.reservado,x.disp,x.ean||"",criarPronto(x)?"sim":"não"]);copyExcel(head,data,this);};
+// IA confere categoria pela FOTO (lote): processa os que ainda não têm veredito
+document.getElementById("verCatVisao").onclick=async function(){const b=this;b.disabled=true;const orig=b.textContent;
+  try{ for(let i=0;i<20;i++){ b.textContent="🔎 IA analisando… ("+(i+1)+")";
+    const r=await fetch(FN+"/comando-cat-visao?secret="+SECRET+"&acao=batch&limit=8",{headers:HJ}); const d=await r.json();
+    if(d.error){alert("Erro: "+d.error);break;}
+    if(!d.processados){ break; }
+    if(d.restantes<=0) break;
+  } }catch(e){alert("falha: "+e.message);}
+  b.textContent=orig;b.disabled=false;
+  const cur=await fetch(FN+"/comando-dados?secret="+SECRET,{headers:HJ}).then(r=>r.json()).catch(()=>null);
+  if(cur&&cur.criar){D.criar=cur.criar;drawCriar();}
+};
 document.getElementById("fEmp").onchange=function(){fEmp=this.value;drawConc();};
 document.getElementById("fPlat").onchange=function(){fPlat=this.value;drawConc();};
 document.getElementById("verTodas").onclick=function(){verTodas=!verTodas;this.textContent=(verTodas?"▾ mostrar só principais":"▸ ver todas as plataformas (148)");renderMatriz();};
@@ -1327,7 +1511,7 @@ document.addEventListener("click",async e=>{
 
 // export
 document.getElementById("xlPrec").onclick=function(){const head=["Ref","Categoria","Empresa","Plataforma","Título","Preço","Custo cheio","Crédito entrada","Custo NET","Comissão","Taxa fixa","Imposto saída","Frete","Margem","Alvo"];const data=(window._prRows||prFiltered()).map(r=>{const m=memoria(r);return [r.ref,r.linha,r.empresa,platShort(r.plat),r.titulo,m.P,m.Cbase,m.credito,m.NET,m.comValor,m.fixa,m.imposto,m.frete,m.margem,m.alvo];});copyExcel(head,data,this);};
-document.getElementById("xlCM").onclick=function(){const cols=cmCols();const RM=refMgMap();const head=["Ref","Descrição","Pior margem",...cols.flatMap(c=>[platShort(c.marketplace)+" "+c.empresa,"Status "+platShort(c.marketplace)+" "+c.empresa]),"Conc mín","Conc máx","Ofertas","vs menor %","Vendas 30d"];const data=(window._cmRows||[]).map(g=>{const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');m2[ch.marketplace+'|'+e]=ch;});const o=cmOurMin(g);const vs=(o!=null&&g.conc&&+g.conc.min>0)?+(((o-+g.conc.min)/+g.conc.min)*100).toFixed(1):"";const mm=RM[g.ref];return [g.ref,g.descr,mm?mm.min:"",...cols.flatMap(c=>{const k=c.marketplace+'|'+c.empresa;const ch=m2[k];const pr=PR.find(r=>r.ref===g.ref&&(r.plat==='ML'?'MERCADO_LIVRE':'SHOPEE')===c.marketplace&&r.empresa===c.empresa);const st=(pr&&pr.st)||(ch&&ch.status)||"";return [ch?ch.preco:(pr?pr.preco:""),st?stLabel(st):""];}),g.conc?g.conc.min:"",g.conc?g.conc.max:"",g.conc?g.conc.ofertas:"",vs,cmV30(g.ref)||""];});copyExcel(head,data,this);};
+document.getElementById("xlCM").onclick=function(){const cols=cmCols();const RM=refMgMap();const head=["Ref","Descrição","Pior margem",...cols.flatMap(c=>[platShort(c.marketplace)+" "+c.empresa,"Status "+platShort(c.marketplace)+" "+c.empresa]),"Conc ML mín","Conc ML máx","Ofertas ML","vs menor ML %","Conc Shopee mín","Conc Shopee máx","Ofertas Shopee","vs menor Shopee %","Vendas 30d"];const data=(window._cmRows||[]).map(g=>{const m2={};(g.canais||[]).forEach(ch=>{const e=ch.empresa||(/mundo/i.test(ch.conta)?'Mundo UD':'Nitron');m2[ch.marketplace+'|'+e]=ch;});const o=cmOurMin(g);const vs=(o!=null&&g.conc&&+g.conc.min>0)?+(((o-+g.conc.min)/+g.conc.min)*100).toFixed(1):"";const mm=RM[g.ref];return [g.ref,g.descr,mm?mm.min:"",...cols.flatMap(c=>{const k=c.marketplace+'|'+c.empresa;const ch=m2[k];const pr=PR.find(r=>r.ref===g.ref&&(r.plat==='ML'?'MERCADO_LIVRE':'SHOPEE')===c.marketplace&&r.empresa===c.empresa);const st=(pr&&pr.st)||(ch&&ch.status)||"";return [ch?ch.preco:(pr?pr.preco:""),st?stLabel(st):""];}),g.conc?g.conc.min:"",g.conc?g.conc.max:"",g.conc?g.conc.ofertas:"",vs,...(()=>{const c=shConc(g.ref),o=ourBest(g.ref,'Shopee');return c&&c.n?[c.min,c.max,c.n,o?+(((o.preco-c.min)/c.min)*100).toFixed(1):""]:["","","",""];})(),cmV30(g.ref)||""];});copyExcel(head,data,this);};
 document.getElementById("xlR").onclick=function(){copyExcel(["Revendedor","Marketplace","Anúncios","CNPJ","Razão social","Município","UF"],D.revendedores.map(x=>[x.seller_nick,x.marketplace,x.n_anuncios,x.cnpj_digitos,x.razao_social,x.municipio,x.uf]),this);};
 document.getElementById("xlCo").onclick=function(){const cols=concCols();const head=["Ref","Descrição","Tabela Sankhya",...cols.map(c=>platShort(c.mp)+" "+c.emp),"Preço div min","Preço div max","Custo","Estoque"];const data=(window._concRows||concFiltered()).map(x=>{const pd=precoDiv(x);return [x.ref,x.descricao,x.na_155?"sim":"não",...cols.map(c=>{const k=c.mp+'|'+c.emp;const a=(x.any_canais&&x.any_canais[k])||0;const r=c.mp==='MERCADO_LIVRE'?((x.real_canais&&x.real_canais[k])||0):'';return `any:${a}${c.mp==='MERCADO_LIVRE'?' real:'+r:''}`;}),pd?pd.mn:"",pd?pd.mx:"",x.custo_final,x.estoque];});copyExcel(head,data,this);};
 document.getElementById("xlCat").onclick=function(){const head=["Ref","Descrição","EAN","Catálogo","Clássico","Dono do catálogo","Nosso menor","Conc menor","Ação","Estoque CD"];const data=(window._catRows||catFiltered()).map(x=>[x.ref,x.descr,x.tem_ean?"sim":"não",x.cat,x.classico,x.dono,x.our_cat_min,x.comp_min,x.acao,x.disp]);copyExcel(head,data,this);};
@@ -1368,7 +1552,7 @@ function initAll(){
   fillPlatAny("cmPlat");
   document.getElementById("fPlat").innerHTML='<option value="">Todas as plataformas</option>'+D.plataformas.map(p=>`<option value="${esc(p.code)}">${esc(p.nome)}${p.principal?'':' (a integrar)'}</option>`).join("");
   document.getElementById("pLinha").onchange=drawPrec;document.getElementById("cmLinha").onchange=drawCM;document.getElementById("coLinha").onchange=drawConc;
-  renderStats();renderMatriz();renderTaxas();drawPrec();drawCM();drawCriar();drawRev();drawConc();drawVendas();
+  renderStats();renderMatriz();renderTaxas();drawPrec();drawCM();drawCriar();drawRev();drawConc();drawVendas();updatePendBadge();
 }
 async function load(){
   document.getElementById("stats").innerHTML='<div class="emp">Carregando dados ao vivo…</div>';
