@@ -8,6 +8,8 @@ import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const BASE='https://produto.nitron.com.br/ecommerce/';
 const MAXI=15;
+const SB=Deno.env.get('SUPABASE_URL')!; const SRK=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!; const MIRROR='/storage/v1/object/public/fotos-any/';
+async function getImg(url:string){ for(let t=0;t<3;t++){ try{ const r=await fetch(url); if(r.status===200){ const ct=r.headers.get('content-type')||''; const buf=new Uint8Array(await r.arrayBuffer()); if(ct.startsWith('image/')&&buf.length>1000) return {ct,buf}; } else await r.body?.cancel(); }catch(_){} await new Promise(r=>setTimeout(r,800)); } return null; }
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Content-Type':'application/json'};
 const J=(o:any,s=200)=>new Response(JSON.stringify(o,(_k,v)=>typeof v==='bigint'?Number(v):v),{status:s,headers:CORS});
 async function sha(s:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
@@ -93,7 +95,14 @@ Deno.serve(async(req)=>{
         let ok=0; const err:string[]=[];
         for(const im of bad.sort((a:any,b:any)=>(b.main?1:0)-(a.main?1:0)||a.index-b.index)){
           const m=String(im.url||'').match(/\/(\d{3}[._]\d{3}[._][0-9A-Z]{3})-\d+\.\w+$/i); const k=m?m[1].replace(/\./g,'_'):'';
-          const pay:any={url:im.url,index:im.index,main:!!im.main}; if(multi&&cor[k]) pay.variation=cor[k];
+          let url=String(im.url);
+          if(body.espelho===true&&!url.includes(MIRROR)){ // copia a foto p/ o Storage público (CDN) — o servidor de origem é lento p/ o Anymarket
+            const mp=url.replace(/^https?:\/\/[^/]+\//,'').replace(/[^A-Za-z0-9._\/-]/g,'_');
+            const o=await getImg(url); if(!o){ err.push('origem indisponível '+url); continue; }
+            const up=await fetch(`${SB}/storage/v1/object/fotos-any/${mp}`,{method:'POST',headers:{'Authorization':'Bearer '+SRK,'apikey':SRK,'Content-Type':o.ct,'x-upsert':'true'},body:o.buf});
+            if(!(up.status>=200&&up.status<300)){ err.push('storage '+up.status+' '+(await up.text()).slice(0,100)); continue; } await up.text();
+            url=`${SB}/storage/v1/object/public/fotos-any/${mp}`; }
+          const pay:any={url,index:im.index,main:!!im.main}; if(multi&&cor[k]) pay.variation=cor[k];
           const d=await fetch(`${base}/products/${pid}/images/${im.id}`,{method:'DELETE',headers:H}); await d.text();
           if(!(d.status>=200&&d.status<300)){ err.push('DEL '+d.status); continue; }
           let r=await fetch(`${base}/products/${pid}/images`,{method:'POST',headers:H,body:JSON.stringify(pay)}); let t=await r.text();
