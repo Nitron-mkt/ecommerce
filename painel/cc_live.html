@@ -550,7 +550,10 @@ function drawPrec(){
   window._prRows=rows;
 }
 const fotoImg=(url,sz)=>url?`<img src="${esc(url)}" alt="" style="width:${sz||40}px;height:${sz||40}px;object-fit:contain;background:#fff;border-radius:6px;vertical-align:middle">`:'';
-function fotoCard(g){const u=g.foto;return u?`<div class="detcard" style="min-width:150px;text-align:center"><img src="${esc(u)}" loading="lazy" alt="" style="width:140px;height:140px;object-fit:contain;background:#fff;border-radius:8px"><div class="ti" style="font-size:11px;margin-top:4px;max-width:140px">${esc(g.descr||g.ref)}</div></div>`:'';}
+// galeria: todas as fotos da referência (produto_foto.galeria); clicar na miniatura troca a foto grande
+function galOf(g){let gal=g.galeria||((D.grupos||[]).find(x=>x.ref===g.ref)||{}).galeria||((D.criar||[]).find(x=>x.ref===g.ref)||{}).galeria||[];if(typeof gal==='string'){try{gal=JSON.parse(gal);}catch(_){gal=[];}}return (Array.isArray(gal)?gal:[]).map(x=>typeof x==='string'?x:(x&&x.url)).filter(Boolean);}
+function galStrip(urls,w){if(urls.length<2)return '';return `<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:5px;max-width:${w}px">${urls.map(u=>`<img src="${esc(u)}" loading="lazy" alt="" title="${esc(u.split('/').pop())}" onclick="event.stopPropagation();this.closest('.detcard').querySelector('.fotoG').src=this.src" style="width:30px;height:30px;object-fit:contain;background:#fff;border-radius:4px;cursor:pointer;border:1px solid var(--bd)">`).join('')}</div><div style="font-size:10px;color:var(--mut);margin-top:3px">📸 ${urls.length} fotos</div>`;}
+function fotoCard(g){const gal=galOf(g);const u=g.foto||gal[0];return u?`<div class="detcard" style="min-width:150px;max-width:230px;text-align:center"><a href="${esc(u)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><img class="fotoG" src="${esc(u)}" loading="lazy" alt="" style="width:140px;height:140px;object-fit:contain;background:#fff;border-radius:8px"></a><div class="ti" style="font-size:11px;margin-top:4px;max-width:200px;margin-inline:auto">${esc(g.descr||g.ref)}</div>${galStrip(gal,220)}</div>`:'';}
 // frete grátis ML: só dá p/ desligar abaixo de R$79 (acima o ML obriga). Verifica AO VIVO antes; grava via ml-frete (senha).
 function freteBox(r){
   const eleg=r.free===true&&+r.preco<79;
@@ -834,7 +837,8 @@ function drawCriar(){
   }).join("")||'<tr><td colspan="8" class="emp">Nada encontrado.</td></tr>';
 }
 function criarDetail(x,pronto,motivos){
-  const img=x.foto?`<div class="detcard" style="text-align:center;min-width:170px"><img src="${esc(x.foto)}" alt="" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px"><div style="font-size:10px;color:var(--mut);margin-top:3px">${+x.n_fotos>1?('📸 '+x.n_fotos+' fotos no banco'):(x.tem_foto?'1 foto':'sem foto')}</div></div>`:'<div class="detcard" style="min-width:150px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px">sem foto</div>';
+  const galC=galOf(x);
+  const img=x.foto?`<div class="detcard" style="text-align:center;min-width:170px;max-width:240px"><img class="fotoG" src="${esc(x.foto)}" alt="" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px">${galC.length>1?galStrip(galC,230):`<div style="font-size:10px;color:var(--mut);margin-top:3px">${x.tem_foto?'1 foto':'sem foto'}</div>`}</div>`:'<div class="detcard" style="min-width:150px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px">sem foto</div>';
   const iaLinha = x.categoria_visao
     ? `<div class="calcline"><span class="l">IA (pela foto)</span><span class="v ${x.visao_ok===false?'mg r':'yes'}">${esc(x.categoria_visao)}${x.visao_conf!=null?(' · '+Math.round(x.visao_conf*100)+'%'):''}${x.visao_ok===false?' ⚠ difere':' ✓'}</span></div>`
     : `<div class="calcline"><span class="l">IA (pela foto)</span><span class="v"><button class="btn visaoCat" data-ref="${esc(x.ref)}" style="padding:2px 8px;font-size:11px;background:transparent;border:1px solid var(--ac);color:var(--ac)">🔎 conferir categoria</button></span></div>`;

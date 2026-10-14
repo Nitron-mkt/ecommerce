@@ -1,4 +1,4 @@
-// comando-dados v33 = v32 (Ricardo-PC: criar=todos 155 fora-any + categoria grupo Sankhya + visão; fora_hub; precoany; precohub; pendencias)
+// comando-dados v34 (+ galeria de fotos por referência em grupos/criar) = v33: v32 (Ricardo-PC: criar=todos 155 fora-any + categoria grupo Sankhya + visão; fora_hub; precoany; precohub; pendencias)
 //   + (Claude, reaplicado da v25) status Shopee REAL por canal (v_shopee_status), Shopee excluído/fora fora do "real" e do fora_hub,
 //     'oids' (todas as ofertas Anymarket do mesmo anúncio ML), oid preferindo a própria ref, disp/reservado em criar,
 //     + concorrência SHOPEE (shopee_concorrente) por referência. ?secret=nitron-radar-9f4c2a
@@ -41,7 +41,7 @@ Deno.serve(async(req)=>{
       WITH a AS (SELECT ref_casada, loja, listing_id, titulo, preco_atual, custo_total, fee_real, frete_real, free_shipping, margem_real, breakeven_real, preco_alvo_real, ml_status, conco1, conco2, conco3 FROM anuncio_proprio WHERE plataforma='ML' AND ref_casada IS NOT NULL),
       g AS (SELECT ref_casada, json_agg(${ANUNCIO} ORDER BY preco_atual) FILTER (WHERE loja='Nitron') nitron, json_agg(${ANUNCIO} ORDER BY preco_atual) FILTER (WHERE loja='Mundo UD') mundoud FROM a GROUP BY ref_casada)
       SELECT co.referencia ref, co.descricao descr, pp.linha, pp.marca, pp.custo155::float custo155, co.custo_final::float custo_final, co.custo_final_fonte fonte, pp.preco_praticado::float prat, pp.preco_ultimo::float prat_ult, pp.praticado_vezes prat_vezes, (COALESCE(pp.estoque_nitron,0)+COALESCE(pp.estoque_extrema,0)) estoque, pp.estoque_nitron est_nit, pp.estoque_extrema est_ext, (COALESCE(pp.reservado_nitron,0)+COALESCE(pp.reservado_extrema,0)) reservado, co.is_kit, co.na_tabela_155 na_155,
-        (SELECT product_id FROM anymarket_sku s WHERE s.referencia=co.referencia LIMIT 1) product_id, ${FOTO} foto, ${SHREAL} shopee_real, ${MLREAL} ml_real,
+        (SELECT product_id FROM anymarket_sku s WHERE s.referencia=co.referencia LIMIT 1) product_id, ${FOTO} foto, (SELECT galeria FROM produto_foto pf WHERE pf.referencia=co.referencia) galeria, ${SHREAL} shopee_real, ${MLREAL} ml_real,
         COALESCE(g.nitron,'[]'::json) nitron, COALESCE(g.mundoud,'[]'::json) mundoud, ca.canais,
         CASE WHEN vc.referencia IS NOT NULL THEN json_build_object('ofertas',vc.ofertas,'min',vc.preco_min,'medio',vc.preco_medio,'max',vc.preco_max,'oficiais',vc.lojas_oficiais) END conc
       FROM v_conciliacao_ref co
@@ -73,7 +73,7 @@ Deno.serve(async(req)=>{
         ${CATLINHA} categoria_grupo, pp.linha,
         an.preco_sugerido::float preco_sugerido,
         COALESCE(an.foto, pf.link_principal) foto,
-        COALESCE(an.n_fotos, pf.n_fotos, 0) n_fotos,
+        COALESCE(pf.n_fotos, an.n_fotos, 0) n_fotos, pf.galeria,
         COALESCE(an.ean, pr.ean) ean, an.cor,
         (COALESCE(an.foto, pf.link_principal) IS NOT NULL) tem_foto,
         (${CATLINHA} IS NOT NULL) tem_cat,
