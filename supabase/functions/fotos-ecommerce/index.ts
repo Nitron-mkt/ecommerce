@@ -108,7 +108,8 @@ Deno.serve(async(req)=>{
         const novas:any[]=[]; for(const x of imgs){ if(jaTem.has(x.url)) continue; const k=multi?(x.variation||'_'):'_'; const main=!temMain.has(k); if(main) temMain.add(k); novas.push({index:++idx,main,...x}); }
         if(body.confirmar!==true){ out.push({product_id:pr.product_id,titulo:pj.title,refs,antes:antes.length,acrescentar:novas.length,amostra:novas.slice(0,3)}); continue; }
         const erros:string[]=[]; let add=0, del=0;
-        for(const im of novas){ const r=await fetch(`${base}/products/${pr.product_id}/images`,{method:'POST',headers:H,body:JSON.stringify(im)}); const t=await r.text();
+        for(const im of novas){ let r=await fetch(`${base}/products/${pr.product_id}/images`,{method:'POST',headers:H,body:JSON.stringify(im)}); let t=await r.text();
+          if(!(r.status>=200&&r.status<300)&&im.main&&/main/i.test(t)){ r=await fetch(`${base}/products/${pr.product_id}/images`,{method:'POST',headers:H,body:JSON.stringify({...im,main:false})}); t=await r.text(); } // já havia principal → entra como adicional
           if(r.status>=200&&r.status<300) add++; else erros.push(r.status+' '+t.slice(0,160)); }
         const ok=!erros.length; const r={status:ok?200:422}; const t=erros.join(' | ');
         await c.queryObject({text:`INSERT INTO anymarket_foto_envio (product_id,referencias,n_antes,imagens_antes,n_depois,http,resultado,em) VALUES ($1,$2,$3,$4,$5,$6,$7,now())
