@@ -98,10 +98,13 @@ Deno.serve(async(req)=>{
           let url=String(im.url);
           if(body.espelho===true&&!url.includes(MIRROR)){ // copia a foto p/ o Storage público (CDN) — o servidor de origem é lento p/ o Anymarket
             const mp=url.replace(/^https?:\/\/[^/]+\//,'').replace(/[^A-Za-z0-9._\/-]/g,'_');
-            const o=await getImg(url); if(!o){ err.push('origem indisponível '+url); continue; }
-            const up=await fetch(`${SB}/storage/v1/object/fotos-any/${mp}`,{method:'POST',headers:{'Authorization':'Bearer '+SRK,'apikey':SRK,'Content-Type':o.ct,'x-upsert':'true'},body:o.buf});
-            if(!(up.status>=200&&up.status<300)){ err.push('storage '+up.status+' '+(await up.text()).slice(0,100)); continue; } await up.text();
-            url=`${SB}/storage/v1/object/public/fotos-any/${mp}`; }
+            const pub=`${SB}/storage/v1/object/public/fotos-any/${mp}`;
+            const h=await fetch(pub,{method:'HEAD'}).catch(()=>null); await h?.body?.cancel();
+            if(!(h&&h.status===200)){ // ainda não espelhada → baixa da origem e sobe
+              const o=await getImg(url); if(!o){ err.push('origem indisponível '+url); continue; }
+              const up=await fetch(`${SB}/storage/v1/object/fotos-any/${mp}`,{method:'POST',headers:{'Authorization':'Bearer '+SRK,'apikey':SRK,'Content-Type':o.ct,'x-upsert':'true'},body:o.buf});
+              if(!(up.status>=200&&up.status<300)){ err.push('storage '+up.status+' '+(await up.text()).slice(0,100)); continue; } await up.text(); }
+            url=pub; }
           const pay:any={url,index:im.index,main:!!im.main}; if(multi&&cor[k]) pay.variation=cor[k];
           const d=await fetch(`${base}/products/${pid}/images/${im.id}`,{method:'DELETE',headers:H}); await d.text();
           if(!(d.status>=200&&d.status<300)){ err.push('DEL '+d.status); continue; }
@@ -112,6 +115,12 @@ Deno.serve(async(req)=>{
         out.push({product_id:pid,erro_antes:bad.length,reenviadas:ok,falhas:err});
       }
       return J({out});
+    }
+    if(acao==='subir'){ // grava uma foto (base64) no espelho fotos-any/<path> — usado quando a origem está lenta p/ a função
+      const mp=String(body.path||'').replace(/[^A-Za-z0-9._\/-]/g,'_'); if(!mp||mp.includes('..')) return J({error:'path'},400);
+      const bin=Uint8Array.from(atob(String(body.b64||'')),ch=>ch.charCodeAt(0)); if(bin.length<1000) return J({error:'imagem vazia'},400);
+      const up=await fetch(`${SB}/storage/v1/object/fotos-any/${mp}`,{method:'POST',headers:{'Authorization':'Bearer '+SRK,'apikey':SRK,'Content-Type':String(body.ct||'image/png'),'x-upsert':'true'},body:bin});
+      return J({path:mp,http:up.status,r:(await up.text()).slice(0,120)});
     }
     if(acao==='reverter'){ // remove do produto as fotos adicionadas por esta rotina (URLs da pasta informada) — usa senha
       const conf=(await c.queryObject`SELECT senha_hash FROM comando_config WHERE id=1`).rows[0] as any;
