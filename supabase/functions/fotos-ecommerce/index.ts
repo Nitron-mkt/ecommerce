@@ -9,7 +9,7 @@ const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const BASE='https://produto.nitron.com.br/ecommerce/';
 const MAXI=15;
 const SB=Deno.env.get('SUPABASE_URL')!; const SRK=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!; const MIRROR='/storage/v1/object/public/fotos-any/';
-async function getImg(url:string){ for(let t=0;t<3;t++){ try{ const r=await fetch(url); if(r.status===200){ const ct=r.headers.get('content-type')||''; const buf=new Uint8Array(await r.arrayBuffer()); if(ct.startsWith('image/')&&buf.length>1000) return {ct,buf}; } else await r.body?.cancel(); }catch(_){} await new Promise(r=>setTimeout(r,800)); } return null; }
+async function getImg(url:string){ for(let t=0;t<3;t++){ try{ const r=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(15000)}); if(r.status>=300&&r.status<400){ await r.body?.cancel(); return null; } if(r.status===200){ const ct=r.headers.get('content-type')||''; const buf=new Uint8Array(await r.arrayBuffer()); if(ct.startsWith('image/')&&buf.length>1000) return {ct,buf}; } else await r.body?.cancel(); }catch(_){} await new Promise(r=>setTimeout(r,800)); } return null; }
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Content-Type':'application/json'};
 const J=(o:any,s=200)=>new Response(JSON.stringify(o,(_k,v)=>typeof v==='bigint'?Number(v):v),{status:s,headers:CORS});
 async function sha(s:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
