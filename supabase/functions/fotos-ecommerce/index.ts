@@ -68,6 +68,42 @@ Deno.serve(async(req)=>{
       const g=await fetch(`${base}/products/${pid}`,{headers:H}); const pj:any=await g.json().catch(()=>null);
       return J({http:r.status,images_endpoint:t.slice(0,1500),produto_images:pj?.images,sku_variations:(pj?.skus||[]).map((s:any)=>({partnerId:s.partnerId,variations:s.variations}))});
     }
+    if(acao==='auditar'){ // leitura: status de TODAS as imagens dos produtos tratados (PROCESSED/ERROR/…), com a mensagem de erro
+      const cfg=(await c.queryObject`SELECT token, base_url FROM anymarket_config WHERE id=1`).rows[0] as any;
+      const base=(cfg.base_url||'https://api.anymarket.com.br/v2').replace(/\/$/,''); const H={'gumgaToken':cfg.token,'Content-Type':'application/json'};
+      const off=Number(p('offset')||0), lim=Math.min(60,Number(p('limit')||40));
+      const pids=(await c.queryObject(`SELECT product_id FROM anymarket_foto_envio ORDER BY product_id OFFSET ${off} LIMIT ${lim}`)).rows.map((r:any)=>r.product_id);
+      const st:Record<string,number>={}; const erros:any[]=[];
+      await pool(pids,6,async(pid:any)=>{ const r=await fetch(`${base}/products/${pid}/images`,{headers:H}); const ims:any[]=await r.json().catch(()=>[]);
+        for(const im of (Array.isArray(ims)?ims:[])){ st[im.status||'?']=(st[im.status||'?']||0)+1; if(im.status!=='PROCESSED') erros.push({product_id:pid,id:im.id,url:im.url,status:im.status,msg:im.statusMessage||im.errorMessage||im.message||null,main:im.main,variation:im.variation,index:im.index,keys:Object.keys(im).join(',')}); } });
+      return J({offset:off,produtos:pids.length,proximo:pids.length<lim?null:off+lim,status:st,erros});
+    }
+    if(acao==='reprocessar'){ // reenvia (DELETE + POST igual) as imagens em ERROR — mesma url/posição/principal/cor; usa senha
+      const conf=(await c.queryObject`SELECT senha_hash FROM comando_config WHERE id=1`).rows[0] as any;
+      if(conf?.senha_hash){ if(!body.senha) return J({error:'senha exigida'},401); if(await sha(String(body.senha))!==conf.senha_hash) return J({error:'senha incorreta'},401); }
+      const cfg=(await c.queryObject`SELECT token, base_url FROM anymarket_config WHERE id=1`).rows[0] as any;
+      const base=(cfg.base_url||'https://api.anymarket.com.br/v2').replace(/\/$/,''); const H={'gumgaToken':cfg.token,'Content-Type':'application/json'};
+      const pids:string[]=(body.product_ids||[]).map(String).slice(0,10); const out:any[]=[];
+      for(const pid of pids){
+        const gi=await fetch(`${base}/products/${pid}/images`,{headers:H}); const ims:any[]=await gi.json().catch(()=>[]);
+        const bad=(Array.isArray(ims)?ims:[]).filter((x:any)=>x.status==='ERROR'); if(!bad.length){ out.push({product_id:pid,erro_antes:0}); continue; }
+        const g=await fetch(`${base}/products/${pid}`,{headers:H}); const pj:any=await g.json().catch(()=>null);
+        const skus=(pj?.skus||[]) as any[]; const multi=skus.length>1; const cor:Record<string,string>={};
+        for(const s of skus){ const v=(s.variations||[]).find((v:any)=>v?.type?.visualVariation)?.description; if(s.partnerId&&v) cor[String(s.partnerId).replace(/\./g,'_')]=v; }
+        let ok=0; const err:string[]=[];
+        for(const im of bad.sort((a:any,b:any)=>(b.main?1:0)-(a.main?1:0)||a.index-b.index)){
+          const m=String(im.url||'').match(/\/(\d{3}[._]\d{3}[._][0-9A-Z]{3})-\d+\.\w+$/i); const k=m?m[1].replace(/\./g,'_'):'';
+          const pay:any={url:im.url,index:im.index,main:!!im.main}; if(multi&&cor[k]) pay.variation=cor[k];
+          const d=await fetch(`${base}/products/${pid}/images/${im.id}`,{method:'DELETE',headers:H}); await d.text();
+          if(!(d.status>=200&&d.status<300)){ err.push('DEL '+d.status); continue; }
+          let r=await fetch(`${base}/products/${pid}/images`,{method:'POST',headers:H,body:JSON.stringify(pay)}); let t=await r.text();
+          if(!(r.status>=200&&r.status<300)&&pay.main&&/main/i.test(t)){ r=await fetch(`${base}/products/${pid}/images`,{method:'POST',headers:H,body:JSON.stringify({...pay,main:false})}); t=await r.text(); }
+          if(r.status>=200&&r.status<300) ok++; else err.push(r.status+' '+t.slice(0,140)+' '+JSON.stringify(pay));
+        }
+        out.push({product_id:pid,erro_antes:bad.length,reenviadas:ok,falhas:err});
+      }
+      return J({out});
+    }
     if(acao==='reverter'){ // remove do produto as fotos adicionadas por esta rotina (URLs da pasta informada) — usa senha
       const conf=(await c.queryObject`SELECT senha_hash FROM comando_config WHERE id=1`).rows[0] as any;
       if(conf?.senha_hash){ if(!body.senha) return J({error:'senha exigida'},401); if(await sha(String(body.senha))!==conf.senha_hash) return J({error:'senha incorreta'},401); }
