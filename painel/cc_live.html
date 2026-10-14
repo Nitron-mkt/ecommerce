@@ -334,6 +334,13 @@ function fb(tsv,done){const ta=document.createElement("textarea");ta.value=tsv;d
 function cfgOf(loja,plat){return (D.config||[]).find(x=>x.loja===loja&&x.plataforma===plat)||{imposto_pct:plat==='ML'&&loja==='Nitron'?0.2725:loja==='Nitron'?0.2725:0.08,embalagem:3,margem_alvo:0.2,custo_liquido:loja==='Nitron',regime:loja==='Nitron'?'Lucro Real':'Simples Nacional'};}
 function shBand(preco){const b=(D.taxa_shopee||[]).find(t=>preco>=+t.valor_min&&preco<=+t.valor_max);return b||(D.taxa_shopee||[]).slice(-1)[0]||{comissao_pct:14,taxa_fixa:26};}
 function mlFixo(preco){const T=D.taxa_ml||[{valor_min:0,valor_max:78.99,custo_fixo:6.5},{valor_min:79,valor_max:9e9,custo_fixo:0}];const b=T.find(t=>preco>=+t.valor_min&&preco<=+t.valor_max);return b?+b.custo_fixo:0;}
+// ML: itens ABAIXO de R$12,50 pagam custo fixo = 50% do preço (+ a comissão %). Verificado nos anúncios (taxa ~61% em R$8,20 = 11% + 50%).
+const ML_PISO=12.5, ML_FIX_PCT=0.5;
+const mlFixoPct=P=>(P>0&&P<ML_PISO)?ML_FIX_PCT:0;
+// comissão PURA (%) a partir da taxa efetiva cobrada no preço atual
+const mlComPura=(fee,P)=>{const ef=P>0?(+fee||0)/P:0.13;return (P>0&&P<ML_PISO&&ef>ML_FIX_PCT)?ef-ML_FIX_PCT:ef;};
+// menor preço que atinge a margem t, considerando a troca de regime em R$12,50
+function mlSolve(base,c,imp,t){const d1=1-c-imp-t;const p1=d1>0?base/d1:null;if(p1!=null&&p1>=ML_PISO)return p1;const d2=d1-ML_FIX_PCT;const p2=d2>0?base/d2:null;if(p2!=null&&p2<ML_PISO)return p2;return p1!=null?ML_PISO:null;}
 function custoLoja(custo_final,loja,plat){const cf=cfgOf(loja,plat);return cf.custo_liquido?(custo_final||0)*NET:(custo_final||0);}
 // memória de cálculo unificada
 // cálculo correto: custo ENTRA CHEIO (tabela Sankhya). Lucro Real credita a entrada => imposto só sobre (venda-custo). Simples: imposto sobre a venda. % sempre sobre o PREÇO FINAL.
@@ -345,18 +352,18 @@ function memoria(row){
   const isSh=/SH|SHOPEE/i.test(row.plat);
   let com_pct, fixa, comValor;
   if(isSh){const b=shBand(P); com_pct=+b.comissao_pct/100; fixa=+b.taxa_fixa; comValor=P*com_pct;}
-  else {const feeReal=+row.fee||0; com_pct=P>0?feeReal/P:0.13; fixa=0; comValor=feeReal;}  // ML: taxa REAL do anúncio (da API) = efetiva; já inclui custo fixo de itens <R$79
+  else {const feeReal=+row.fee||0; com_pct=mlComPura(feeReal,P); fixa=mlFixoPct(P)*P; comValor=com_pct*P; if(!(P>0&&P<ML_PISO)){comValor=feeReal;} }  // ML: taxa REAL (API/vendas); abaixo de R$12,50 separa comissão % + custo fixo 50%
   const feeTot=comValor+fixa; const frete=+row.frete||0;
   const imposto = imp*P;                               // imposto de SAÍDA sobre a venda
   const lucro = P - NET - feeTot - frete - emb - imposto;
   const margem = P>0?lucro/P:null;
   const base = NET + fixa + frete + emb;               // reverso: P(1-com-imp)=base
-  const be = (1-com_pct-imp)>0 ? base/(1-com_pct-imp) : null;
-  const alvo = (1-com_pct-imp-malvo)>0 ? base/(1-com_pct-imp-malvo) : null;
+  const be = isSh ? ((1-com_pct-imp)>0 ? base/(1-com_pct-imp) : null) : mlSolve(NET+frete+emb,com_pct,imp,0);
+  const alvo = isSh ? ((1-com_pct-imp-malvo)>0 ? base/(1-com_pct-imp-malvo) : null) : mlSolve(NET+frete+emb,com_pct,imp,malvo);
   return {regime:cf.regime,imp,emb,malvo,credita,isSh,P,Cbase,credito,NET,com_pct,comValor,fixa,feeTot,frete,imposto,lucro,margem,be,alvo};
 }
 function taxExplain(plat,preco){
-  if(/ML|MERCADO/.test(plat)) return "ML: comissão por tipo de anúncio (clássico ~11,5–12%, premium ~16,5–17% nesta categoria), REAL da API por anúncio. Verificado em pedidos reais pagos: o ML NÃO cobra o custo fixo de itens < R$79 nesta conta — a taxa cobrada é só a comissão %.";
+  if(/ML|MERCADO/.test(plat)) return "ML: comissão por tipo de anúncio (clássico ~11,5–12%, premium ~16,5–17% nesta categoria), REAL da API por anúncio. Entre R$12,50 e R$79 o ML NÃO cobra custo fixo nesta conta (verificado em pedidos reais). ABAIXO de R$12,50 cobra custo fixo de 50% do preço (verificado nos anúncios: ~61% de taxa total).";
   if(/SH|SHOPEE/i.test(plat)){const b=shBand(preco||0);return `Shopee: taxa total = comissão ${b.comissao_pct}% sobre o preço + taxa fixa R$ ${(+b.taxa_fixa).toFixed(0)} por pedido (faixa R$ ${(+b.valor_min).toFixed(0)}–${(+b.valor_max).toFixed(0)}). Até R$ 79,99 a comissão é 20%; acima, 14%.`;}
   return "Cálculo a configurar (cadastrar regra de taxa na aba Regras de Taxas).";
 }
@@ -371,8 +378,11 @@ function memoriaHtml(row){
     ?`<div class="calcline"><span class="l">− Comissão Shopee ${PCT(m.com_pct)} sobre o preço</span><span class="v">− ${BRL(m.comValor)}</span></div>
       <div class="calcline"><span class="l">− Taxa fixa Shopee (por faixa)</span><span class="v">− ${BRL(m.fixa)}</span></div>
       <div class="calcline"><span class="l" style="font-style:italic">= Taxa Shopee total (comissão + fixa)</span><span class="v">− ${BRL(m.feeTot)}</span></div>`
-    :`<div class="calcline"><span class="l">− Taxa ML real deste anúncio (${PCT(m.com_pct)} — ${row.fee_fonte==='venda'?('taxa REAL paga em '+row.fee_un+' venda(s)'):'comissão da categoria, da API'})</span><span class="v">− ${BRL(m.feeTot)}</span></div>
-      <div class="calcline"><span class="l" style="font-size:11px;color:var(--mut)">${row.fee_fonte==='venda'?'✓ taxa que o ML <b>de fato cobrou</b> neste produto (marketplaceFee do Anymarket)':'sem vendas recentes p/ taxa real; usando a comissão da API. '}<b>sem custo fixo de itens &lt; R$79</b> nesta conta</span><span class="v"></span></div>`;
+    :(m.fixa>0?`<div class="calcline"><span class="l">− Comissão ML ${PCT(m.com_pct)} sobre o preço</span><span class="v">− ${BRL(m.comValor)}</span></div>
+      <div class="calcline"><span class="l">− Custo fixo ML (itens &lt; R$12,50 = 50% do preço)</span><span class="v">− ${BRL(m.fixa)}</span></div>
+      <div class="calcline"><span class="l" style="font-style:italic">= Taxa ML total cobrada (${PCT(m.feeTot/(m.P||1))})</span><span class="v">− ${BRL(m.feeTot)}</span></div>`
+     :`<div class="calcline"><span class="l">− Taxa ML real deste anúncio (${PCT(m.com_pct)} — ${row.fee_fonte==='venda'?('taxa REAL paga em '+row.fee_un+' venda(s)'):'comissão da categoria, da API'})</span><span class="v">− ${BRL(m.feeTot)}</span></div>`)+`
+      <div class="calcline"><span class="l" style="font-size:11px;color:var(--mut)">${row.fee_fonte==='venda'?'✓ taxa que o ML <b>de fato cobrou</b> neste produto (marketplaceFee do Anymarket)':'sem vendas recentes p/ taxa real; usando a comissão da API. '}<b>sem custo fixo entre R$12,50 e R$79</b> nesta conta; <b>abaixo de R$12,50</b> o ML cobra custo fixo de 50% do preço</span><span class="v"></span></div>`;
   return `${custoLines}
     <div class="calcline" style="margin-top:4px"><span class="l">Preço anunciado</span><span class="v">${BRL(m.P)}</span></div>
     ${comLines}
@@ -384,7 +394,7 @@ function memoriaHtml(row){
     <div class="calcline"><span class="l">Preço-alvo (margem ${PCT(m.malvo)})</span><span class="v">${BRL(m.alvo)}</span></div>
     <div style="font-size:11px;color:var(--mut);margin-top:6px;border-top:1px dashed var(--bd);padding-top:6px">ℹ️ ${taxExplain(row.plat,m.P)}</div>`;
 }
-function margemEm(row,price){const cf=cfgOf(row.empresa,row.plat);const imp=+cf.imposto_pct,emb=+cf.embalagem,credita=!!cf.custo_liquido;const Cb=(row.custo_final!=null&&+row.custo_final>0)?+row.custo_final:(+row.custo||0);const NET=credita?Cb*(1-imp):Cb;let com,fixa;if(/SH|SHOPEE/i.test(row.plat)){const b=shBand(price);com=+b.comissao_pct/100;fixa=+b.taxa_fixa;}else{const fc0=mlFixo(row.preco||0);com=(row.preco>0?Math.max(0,(+row.fee||0)-fc0)/+row.preco:0.13);fixa=mlFixo(price);}const fee=price*com+fixa;const frete=+row.frete||0;const imposto=imp*price;const lucro=price-NET-fee-frete-emb-imposto;return price>0?lucro/price:null;}
+function margemEm(row,price){const cf=cfgOf(row.empresa,row.plat);const imp=+cf.imposto_pct,emb=+cf.embalagem,credita=!!cf.custo_liquido;const Cb=(row.custo_final!=null&&+row.custo_final>0)?+row.custo_final:(+row.custo||0);const NET=credita?Cb*(1-imp):Cb;let com,fixa;if(/SH|SHOPEE/i.test(row.plat)){const b=shBand(price);com=+b.comissao_pct/100;fixa=+b.taxa_fixa;}else{com=mlComPura(+row.fee||0,+row.preco||0);fixa=mlFixoPct(price)*price;}const fee=price*com+fixa;const frete=+row.frete||0;const imposto=imp*price;const lucro=price-NET-fee-frete-emb-imposto;return price>0?lucro/price:null;}
 // Especialista embarcado (regras de marketplace/precificação/estratégia)
 function especialista(row){
   const m=memoria(row);const tips=[];
@@ -394,7 +404,7 @@ function especialista(row){
   if(m.margem!=null&&m.margem<0) tips.push(["bad",`No prejuízo (margem ${PCT(m.margem)}). Subir para ≥ break-even ${BRL(m.be)} ou rever custo.`]);
   else if(m.margem!=null&&m.margem<m.malvo) tips.push(["warn",`Margem ${PCT(m.margem)} abaixo do alvo ${PCT(m.malvo)}. Preço-alvo = ${BRL(m.alvo)}.`]);
   if(m.P>0&&m.P<40){const fixo=m.isSh?m.fixa:6.5;const peso=fixo/m.P;if(peso>0.12) tips.push(["ac",`Item barato: a taxa fixa (~${BRL(fixo)}) pesa ${PCT(peso)} do preço. Vender em KIT (2–4 un) dilui a taxa fixa e o frete e eleva o ticket — melhor margem.`]);}
-  if(!m.isSh && m.P>0 && m.P<79 && m.fixa>0){const mgAcima=margemEm(row,79.01);const ganho=(mgAcima!=null&&m.margem!=null)?(mgAcima-m.margem):null;tips.push(["ac",`Piso R$79 do ML: abaixo disso paga-se o custo fixo ${BRL(m.fixa)}. A partir de R$79,01 esse custo zera → margem iria a ${PCT(mgAcima)}${ganho!=null&&ganho>0.03?` (+${PCT(ganho)})`:''}. Avalie subir acima de R$79 ou montar KIT (2+ un) para cruzar o piso.`]);}
+  if(!m.isSh && m.P>0 && m.P<ML_PISO){const mg=margemEm(row,ML_PISO);tips.push(["warn",`Abaixo de R$12,50 o ML cobra <b>custo fixo de 50% do preço</b> (${BRL(m.fixa)}) além da comissão — a taxa total vai a ${PCT(m.feeTot/m.P)}. Subindo para <b>R$12,50</b> esse custo some → margem ${PCT(mg)}. Melhor ainda: vender em <b>KIT</b> (2+ un).`]);}
   const conc=row.conc;
   if(conc&&conc.ofertas){
     if(m.P>conc.max){const dif=(m.P-conc.min)/m.P;tips.push(["warn",`Acima do mercado: menor concorrente ${BRL(conc.min)} (nós ${BRL(m.P)}, +${PCT(dif)}). Equiparar ao menor → margem iria a ${PCT(margemEm(row,conc.min))}.`]);}
@@ -1421,8 +1431,8 @@ document.addEventListener("input",e=>{const sr=e.target.closest(".simrow");if(!s
   const plat=sr.dataset.plat, imp=+sr.dataset.imp, emb=+sr.dataset.emb, credita=sr.dataset.credita==='1';
   const baseC=credita?custo*(1-imp):custo; let com,fixa;
   if(/SH|SHOPEE/i.test(plat)){let p=(baseC+frete+emb)/(1-0.14-imp-m);const b=shBand(p);com=+b.comissao_pct/100;fixa=+b.taxa_fixa;}
-  else{com=(+sr.dataset.preco>0)?(+sr.dataset.fee/+sr.dataset.preco):0.13;fixa=0;}
-  const novo=(baseC+frete+emb+fixa)/(1-com-imp-m);
+  else{com=mlComPura(+sr.dataset.fee,+sr.dataset.preco);fixa=0;}
+  const novo=/SH|SHOPEE/i.test(plat)?(baseC+frete+emb+fixa)/(1-com-imp-m):mlSolve(baseC+frete+emb,com,imp,m);
   sr.querySelector(".novo").textContent=BRL(novo);});
 document.addEventListener("click",async e=>{
   const b=e.target.closest(".aprovar");if(b){
