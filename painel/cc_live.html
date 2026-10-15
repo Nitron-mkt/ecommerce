@@ -677,8 +677,9 @@ function drawPend(){
   const mlFora=PR.filter(r=>/ML|MERC/i.test(r.plat) && !r.oid && r.lid);
   const mlAtivos=mlFora.filter(r=>stNorm(r.st)==='ativo');
   const mlAntigos=mlFora.filter(r=>stNorm(r.st)!=='ativo');
-  const mlRowHtml=(r,showMg)=>{const m=memoria(r);const al=anyLink(r.product_id);return `<tr><td class="num" style="white-space:nowrap">${esc(r.ref)}</td><td><span class="badge-emp ${empCls(r.empresa)}">${esc(r.empresa)}</span></td><td>${stPill(r.st)}</td><td class="r num">${BRL(r.preco)}</td>${showMg?`<td class="r mg ${mgCls(m.margem)}">${PCT(m.margem)}</td>`:''}<td>${r.product_id?'<span class="yes">no hub</span>':'<span class="mg y">sem produto</span>'}</td><td><a class="lnk" href="${mlEdit(r.lid)}" target="_blank" rel="noopener">abrir no ML ↗</a>${al?` <a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:''}</td></tr>`;};
-  const tblML=(arr,showMg)=>`<div class="tablewrap" style="max-height:46vh"><table><thead><tr><th>Ref</th><th>Loja</th><th>Status</th><th class="r">Preço</th>${showMg?'<th class="r">Margem</th>':''}<th>Produto</th><th>Link</th></tr></thead><tbody>${arr.map(r=>mlRowHtml(r,showMg)).join('')||'<tr><td colspan="7" class="emp">Nenhum.</td></tr>'}</tbody></table></div>`;
+  const mlRowHtml=(r,showMg,enc)=>{const m=memoria(r);const al=anyLink(r.product_id);return `<tr${enc?` data-lid="${esc(r.lid)}"`:''}><td class="num" style="white-space:nowrap">${esc(r.ref)}</td><td><span class="badge-emp ${empCls(r.empresa)}">${esc(r.empresa)}</span></td><td>${stPill(r.st)}</td><td class="r num">${BRL(r.preco)}</td>${showMg?`<td class="r mg ${mgCls(m.margem)}">${PCT(m.margem)}</td>`:''}<td>${r.product_id?'<span class="yes">no hub</span>':'<span class="mg y">sem produto</span>'}</td><td><a class="lnk" href="${mlEdit(r.lid)}" target="_blank" rel="noopener">abrir no ML ↗</a>${al?` <a class="lnk any" href="${al}" target="_blank" rel="noopener">Anymarket ↗</a>`:''}</td>${enc?`<td style="white-space:nowrap"><button class="btn ghost encUm" data-lid="${esc(r.lid)}">excluir</button> <span class="encRes"></span></td>`:''}</tr>`;};
+  const tblML=(arr,showMg,enc)=>`<div class="tablewrap" style="max-height:46vh"><table${enc?' id="tEnc"':''}><thead><tr><th>Ref</th><th>Loja</th><th>Status</th><th class="r">Preço</th>${showMg?'<th class="r">Margem</th>':''}<th>Produto</th><th>Link</th>${enc?'<th>Excluir no ML</th>':''}</tr></thead><tbody>${arr.map(r=>mlRowHtml(r,showMg,enc)).join('')||'<tr><td colspan="8" class="emp">Nenhum.</td></tr>'}</tbody></table></div>`;
+  window._encLids=[...new Set(mlAntigos.map(r=>r.lid))];
   const propN=prop.length;
   document.getElementById("pendBody").innerHTML=`
     <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">🔒 Cálculo automático de preço — gravação recusada (${auto.length})</div>
@@ -691,7 +692,12 @@ function drawPend(){
 
     <div class="grp"><div style="padding:10px 12px;font-weight:700;background:#4a1d1d">🗑️ Mercado Livre antigos/pausados/duplicados — ENCERRAR no ML (${mlAntigos.length})</div>
       <div style="padding:10px 12px"><div class="note" style="margin-bottom:8px"><b>O que fazer:</b> anúncios <b>parados/duplicados</b> fora do hub — não vendem e poluem a conciliação. <b>Encerre no próprio Mercado Livre</b> (abrir no ML → encerrar/excluir). <b>Não importar.</b> Vários refs têm 2–4 listings repetidos.</div>
-      ${tblML(mlAntigos,false)}</div></div>
+      <div class="simrow" style="margin:0 0 8px;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="password" id="encPw" placeholder="senha" style="width:90px">
+        <button class="btn" id="encTodos" style="background:#8b2323;border-color:#8b2323">🗑️ Excluir os ${window._encLids.length} anúncios no Mercado Livre</button>
+        <span id="encMsg" style="font-size:12px"></span></div>
+      <div class="note" style="margin-bottom:8px;font-size:11px">Antes de excluir cada um, o sistema consulta o ML na hora: se o anúncio estiver <b>ativo</b> ou <b>vinculado no Anymarket</b>, ele é <b>pulado</b>. Exclusão no ML é <b>definitiva</b>. Anúncios "em revisão" podem ser recusados pelo ML até a revisão terminar.</div>
+      ${tblML(mlAntigos,false,true)}</div></div>
 
     <div class="grp"><div style="padding:10px 12px;font-weight:700;background:var(--card2)">🛒 Shopee — conciliada ✓</div>
       <div style="padding:10px 12px"><div class="note">Os anúncios Shopee mortos (404) foram <b>removidos</b> e os vivos estão todos no hub — <b>0 fora do hub</b>. Nada a fazer aqui.</div></div></div>
@@ -1210,6 +1216,29 @@ function drawManual(){
       <td style="font-size:11px;color:var(--mut)">${new Date(m0.em).toLocaleString('pt-BR')}</td>
       <td><div class="simrow" style="margin:0"><button class="btn ghost modoInfo" data-oid="${m0.oid}">ver modo</button><input type="password" class="modoPw" placeholder="senha" style="width:76px"><button class="btn modoGo" data-oid="${m0.oid}">Converter p/ "por SKU e marketplace"</button></div><div class="modoRes" style="font-size:11px;margin-top:4px"></div></td></tr>`;}).join('')||'<tr><td colspan="5" class="emp">✓ Nenhuma oferta recusada pendente.</td></tr>';
 }
+// Excluir anúncios ML parados/duplicados fora do hub (Pendências) — função ml-encerrar (revalida ao vivo: pula ativo/vinculado)
+document.addEventListener('click',async e=>{
+  const um=e.target.closest('.encUm'), todos=e.target.closest('#encTodos'); if(!um&&!todos) return;
+  const msg=document.getElementById('encMsg'); const pw=document.getElementById('encPw').value;
+  if(!pw){msg.innerHTML='<span class="mg r">Digite a senha (campo ao lado do botão vermelho).</span>';return;}
+  const lids=um?[um.dataset.lid]:(window._encLids||[]);
+  if(!lids.length){msg.innerHTML='<span class="mg y">Nada a excluir.</span>';return;}
+  if(!confirm(`EXCLUIR ${lids.length} anúncio(s) no Mercado Livre?\n\nIsso é definitivo (o anúncio é encerrado e apagado da conta).\nAnúncios ativos ou vinculados no Anymarket são pulados automaticamente.`))return;
+  const bt=um||todos; bt.disabled=true; const cont={ok:0,pulado:0,erro:0};
+  const marca=(lid,html)=>document.querySelectorAll(`#tEnc tr[data-lid="${lid}"] .encRes`).forEach(x=>x.innerHTML=html);
+  lids.forEach(l=>marca(l,'<span style="color:var(--mut)">na fila…</span>'));
+  for(let i=0;i<lids.length;i+=10){
+    const lote=lids.slice(i,i+10); msg.textContent=`excluindo… ${Math.min(i+10,lids.length)}/${lids.length}`;
+    try{const r=await fetch(FN+'/ml-encerrar',{method:'POST',headers:HJ,body:JSON.stringify({secret:SECRET,senha:pw,confirmar:true,acao:'excluir',lids:lote})});const d=await r.json();
+      if(d.error){msg.innerHTML='<span class="mg r">'+esc(d.error)+'</span>';lote.forEach(l=>marca(l,''));bt.disabled=false;return;}
+      (d.out||[]).forEach(o=>{const ok=o.resultado==='excluído', pul=/^PULADO|não encontrado/.test(o.resultado);
+        if(ok){cont.ok++;document.querySelectorAll(`#tEnc tr[data-lid="${o.lid}"] .encUm`).forEach(b=>b.remove());} else if(pul) cont.pulado++; else cont.erro++;
+        marca(o.lid,ok?'<span class="yes">✓ excluído</span>':pul?`<span class="mg y">${esc(o.resultado)}</span>`:`<span class="mg r" title="${esc(o.erro||'')}">${esc(o.resultado)}</span>`);});
+    }catch(err){lote.forEach(l=>marca(l,'<span class="mg r">falha de rede</span>'));cont.erro+=lote.length;}
+  }
+  msg.innerHTML=`<span class="${cont.erro?'mg y':'yes'}">${cont.ok} excluído(s) · ${cont.pulado} pulado(s) · ${cont.erro} com erro${cont.erro?' (passe o mouse no erro p/ ver o motivo do ML)':''}</span>`;
+  bt.disabled=false;
+});
 async function confAplicar(list,pw,msgEl){
   const itens=[];list.forEach(({x,preco})=>(x.offers||[]).forEach(o=>itens.push({offer_id:+o.oid,preco})));
   const r=await fetch(FN+'/comando-preco',{method:'POST',headers:HJ,body:JSON.stringify({secret:SECRET,senha:pw,confirmar:true,origem:'conflito-cores',itens})});return await r.json();
