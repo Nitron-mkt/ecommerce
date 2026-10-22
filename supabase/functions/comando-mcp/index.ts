@@ -1,4 +1,5 @@
-// comando-mcp v5: + acao=tools (lista as ferramentas do MCP, leitura); publicar repassa titulo/descricao quando informados.
+// comando-mcp v6: + acao=criarcor (nitron_anymarket_criar_cor, com senha).
+// v5: + acao=tools (lista as ferramentas do MCP, leitura); publicar repassa titulo/descricao quando informados.
 // v4: + acao=addcor (adicionar_cor + previa). montar resolve ref->cod_prod. criar/addcor/publicar gated por senha.
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
@@ -41,6 +42,12 @@ Deno.serve(async(req)=>{
       const o:any=await mcpRaw(url,key,'tools/list',{});
       const tools=((o.result&&o.result.tools)||[]).filter((t:any)=>/anymarket/i.test(t.name)).map((t:any)=>({name:t.name,description:String(t.description||'').slice(0,600),params:t.inputSchema?.properties?Object.fromEntries(Object.entries(t.inputSchema.properties).map(([k,v]:any)=>[k,String(v?.description||v?.type||'').slice(0,160)])):null,required:t.inputSchema?.required||[]}));
       return new Response(JSON.stringify({tools,erro:o.error||null}),{headers:CORS});
+    }
+    if(acao==='criarcor'){ // cria a cor no Anymarket + AD_CORESANY (não duplica: se já existe, devolve a existente)
+      if(!await checkSenha()) return new Response(JSON.stringify({error:'senha incorreta'}),{status:403,headers:CORS});
+      const nomes=(Array.isArray(body.nomes)?body.nomes:[body.nome]).map((x:any)=>String(x||'').trim()).filter(Boolean).slice(0,30);
+      const out:any[]=[]; for(const nome of nomes){ out.push({nome,r:await mcpCall(url,key,'nitron_anymarket_criar_cor',{ambiente,nome})}); }
+      return new Response(JSON.stringify({out}),{headers:CORS});
     }
     if(acao==='categorias') return new Response(JSON.stringify(await mcpCall(url,key,'nitron_anymarket_categorias',{})),{headers:CORS});
     if(acao==='cores') return new Response(JSON.stringify(await mcpCall(url,key,'nitron_anymarket_cores',{})),{headers:CORS});
