@@ -18,6 +18,9 @@
 - O título e a descrição do PRODUTO valem para todos os canais; a ficha técnica fica em "Características"
   (colunas NOME n / VALOR n da planilha).
 - Importação: tela de **atualização** de produtos (os SKUs já existem). Mantenha as colunas do modelo.
+- **Nunca** preencha ou altere NOME/VALOR VARIAÇÃO de um produto que já existe: o Any recusa a linha inteira
+  ("Não é possível editar os valores de variação de produtos com variação"). Se o produto não tem cor como variação,
+  coloque a cor só na ficha técnica (característica "Cor") e no TÍTULO SKU.
 - Cálculo de preço "Manual - Anúncio": o preço do anúncio não é sobrescrito pela planilha.
 
 ## Base SEO (adaptada de claude-seo / seo-ecommerce)
