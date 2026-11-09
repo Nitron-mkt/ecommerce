@@ -37,6 +37,29 @@ Deno.serve(async(req)=>{
     }
     if(acao==='recomendar'){ const out:any[]=[]; for(const t of (body.titulos||[]).slice(0,40)){ const r=await tt(appT,at,'POST','/product/202309/categories/recommend',sc,{product_title:t.title}); out.push({id:t.id,title:t.title,rec:(r.d?.data?.categories||[]).map((x:any)=>({id:x.id,nome:x.name,folha:x.is_leaf})),leaf:r.d?.data?.leaf_category_id,code:r.d?.code,msg:r.d?.code?r.d?.message:undefined}); } return J({out}); }
     if(acao==='atributos'){ const r=await tt(appT,at,'GET',`/product/202309/categories/${p('category_id')}/attributes`,{...sc,locale:'pt-BR'},null); return J({http:r.http,code:r.d?.code,msg:r.d?.message,attrs:(r.d?.data?.attributes||[]).map((a:any)=>({id:a.id,nome:a.name,tipo:a.type,obrig:a.is_requried??a.is_required,multi:a.is_multiple_selection,vals:(a.values||[]).slice(0,40).map((v:any)=>({id:v.id,n:v.name}))}))}); }
+    if(acao==='detalhe'){ const d=await tt(appT,at,'GET',`/product/202309/products/${p('product_id')}`,sc,null); return J(d.d); }
+    if(acao==='trocar'){ // edição completa (PUT) mantendo tudo e trocando só category_id
+      const itens=(body.itens||[]).slice(0,10); const out:any[]=[];
+      await c.queryObject(`CREATE TABLE IF NOT EXISTS tiktok_categoria_log (id bigserial primary key, product_id text, cat_antes text, cat_nova text, http int, code int, resposta text, em timestamptz default now())`);
+      for(const it of itens){
+        const d=await tt(appT,at,'GET',`/product/202309/products/${it.product_id}`,sc,null); const x=d.d?.data; if(!x){ out.push({product_id:it.product_id,erro:'detalhe '+JSON.stringify(d.d).slice(0,200)}); continue; }
+        const antes=(x.category_chains||[]).slice(-1)[0]?.id; if(String(antes)===String(it.category_id)){ out.push({product_id:it.product_id,ja_ok:true}); continue; }
+        const pl:any={title:x.title,description:x.description,category_id:String(it.category_id),main_images:(x.main_images||[]).map((m:any)=>({uri:m.uri})),
+          skus:(x.skus||[]).map((k:any)=>{ const o:any={id:k.id,seller_sku:k.seller_sku,price:{amount:String(k.price?.tax_exclusive_price??k.price?.sale_price),currency:k.price?.currency||'BRL'},inventory:(k.inventory||[]).map((v:any)=>({warehouse_id:v.warehouse_id,quantity:v.quantity}))};
+            if(k.sales_attributes?.length) o.sales_attributes=k.sales_attributes.map((a:any)=>{ const r:any={id:a.id,value_id:a.value_id,name:a.name,value_name:a.value_name}; if(a.sku_img?.uri) r.sku_img={uri:a.sku_img.uri}; return r; });
+            if(k.identifier_code?.code) o.identifier_code={code:k.identifier_code.code,type:k.identifier_code.type}; return o; })};
+        if(x.brand?.id) pl.brand_id=x.brand.id; if(x.package_weight) pl.package_weight=x.package_weight; if(x.package_dimensions) pl.package_dimensions=x.package_dimensions;
+        if(x.video?.id) pl.video={id:x.video.id}; if(x.is_cod_allowed!==undefined) pl.is_cod_allowed=x.is_cod_allowed;
+        let attrs=(x.product_attributes||[]).map((a:any)=>({id:a.id,values:(a.values||[]).map((v:any)=>v.id&&v.id!=='0'?{id:v.id,name:v.name}:{name:v.name})}));
+        if(Array.isArray(it.product_attributes)) attrs=it.product_attributes; if(attrs.length) pl.product_attributes=attrs;
+        if(body.confirmar!==true){ out.push({product_id:it.product_id,antes,payload:pl}); continue; }
+        let r=await tt(appT,at,'PUT',`/product/202309/products/${it.product_id}`,sc,pl);
+        if(r.d?.code!==0 && attrs.length){ const pl2={...pl}; delete pl2.product_attributes; const r2=await tt(appT,at,'PUT',`/product/202309/products/${it.product_id}`,sc,pl2); if(r2.d?.code===0) r=r2; else r={...r,d:{...r.d,sem_attrs:r2.d}}; }
+        await c.queryObject({text:`INSERT INTO tiktok_categoria_log (product_id,cat_antes,cat_nova,http,code,resposta) VALUES ($1,$2,$3,$4,$5,$6)`,args:[String(it.product_id),String(antes||''),String(it.category_id),r.http,Number(r.d?.code??-1),'PUT '+JSON.stringify(r.d).slice(0,600)]});
+        out.push({product_id:it.product_id,antes,nova:it.category_id,ok:r.d?.code===0,code:r.d?.code,msg:r.d?.message,data:r.d?.data,sem_attrs:r.d?.sem_attrs});
+      }
+      return J({confirmar:body.confirmar===true,out});
+    }
     if(acao==='aplicar'){
       const itens=(body.itens||[]).slice(0,25); const out:any[]=[];
       await c.queryObject(`CREATE TABLE IF NOT EXISTS tiktok_categoria_log (id bigserial primary key, product_id text, cat_antes text, cat_nova text, http int, code int, resposta text, em timestamptz default now())`);
