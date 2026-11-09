@@ -1,9 +1,5 @@
-// tiktok-categorias: categorias dos produtos da loja TikTok (token id=1).
-// GET ?secret&acao=arvore                       → árvore de categorias (folhas) pt-BR
-// GET ?secret&acao=listar&page_token=&limit=50  → produtos com a categoria atual (detalhe por produto)
-// POST {secret,acao:'recomendar',titulos:[{id,title}]} → categoria recomendada pelo TikTok p/ cada título
-// POST {secret,acao:'aplicar',confirmar:true,itens:[{product_id,category_id}]} → partial_edit da categoria (sem confirmar = prévia)
-// POST {secret,acao:'atributos',category_id}    → atributos da categoria (obrigatórios)
+// tiktok-categorias: categorias dos produtos de uma loja TikTok (param loja = nome ou shop_id; padrão token id=1).
+// ?acao=refresh | arvore | listar | atributos | detalhe ; POST recomendar | trocar (PUT completo, troca category_id) | aplicar (partial_edit: NÃO troca categoria)
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!; const HOST='https://open-api.tiktokglobalshop.com';
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Content-Type':'application/json'};
@@ -19,12 +15,13 @@ Deno.serve(async(req)=>{
     const p=(k:string)=>body[k]??u.searchParams.get(k);
     const app=(await c.queryObject`SELECT * FROM tiktok_oauth_app WHERE id=1`).rows[0] as any;
     if(!app||p('secret')!==app.state_secret) return J({error:'secret'},403);
-    const tok=(await c.queryObject`SELECT * FROM tiktok_oauth_token WHERE id=1`).rows[0] as any;
+    const lj=String(p('loja')||''); const tok=(lj?(await c.queryObject({text:`SELECT * FROM tiktok_oauth_token WHERE shop_id=$1 OR seller_name ILIKE $2 ORDER BY id LIMIT 1`,args:[lj,'%'+lj+'%']})).rows[0]:(await c.queryObject`SELECT * FROM tiktok_oauth_token WHERE id=1`).rows[0]) as any;
+    if(!tok) return J({error:'loja sem token: autorize no app',lojas:(await c.queryObject`SELECT id,seller_name,shop_id FROM tiktok_oauth_token`).rows},400);
     let at=tok.access_token; const acao=p('acao')||'listar';
     const appT=(await c.queryObject({text:`SELECT * FROM tiktok_oauth_app WHERE app_key=$1`,args:[tok.app_key]})).rows[0] as any||app;
     if(p('refresh')==='1'||p('refresh')===true||acao==='refresh'){ const app2=appT;
       const r=await fetch(`https://auth.tiktok-shops.com/api/v2/token/refresh?app_key=${encodeURIComponent(app2.app_key)}&app_secret=${encodeURIComponent(app2.app_secret)}&refresh_token=${encodeURIComponent(tok.refresh_token)}&grant_type=refresh_token`); const j:any=await r.json().catch(()=>null); const d=j?.data||{};
-      if(j?.code===0&&d.access_token){ at=d.access_token; await c.queryObject({text:`UPDATE tiktok_oauth_token SET access_token=$1,refresh_token=$2,access_expire=to_timestamp($3),refresh_expire=to_timestamp($4),atualizado_em=now() WHERE id=1`,args:[d.access_token,d.refresh_token||tok.refresh_token,Number(d.access_token_expire_in)||0,Number(d.refresh_token_expire_in)||0]}); }
+      if(j?.code===0&&d.access_token){ at=d.access_token; await c.queryObject({text:`UPDATE tiktok_oauth_token SET access_token=$1,refresh_token=$2,access_expire=to_timestamp($3),refresh_expire=to_timestamp($4),atualizado_em=now() WHERE id=$5`,args:[d.access_token,d.refresh_token||tok.refresh_token,Number(d.access_token_expire_in)||0,Number(d.refresh_token_expire_in)||0,tok.id]}); }
       if(acao==='refresh') return J({code:j?.code,msg:j?.message,ok:!!d.access_token,expira:d.access_token_expire_in}); }
     const sc={shop_cipher:String(tok.shop_cipher)};
     if(acao==='arvore'){ const r=await tt(appT,at,'GET','/product/202309/categories',{...sc,locale:'pt-BR'},null); const cats=r.d?.data?.categories||[]; return J({http:r.http,code:r.d?.code,msg:r.d?.message,n:cats.length,cats:cats.map((x:any)=>({id:x.id,pai:x.parent_id,nome:x.local_name,folha:x.is_leaf,perm:x.permission_statuses}))}); }
