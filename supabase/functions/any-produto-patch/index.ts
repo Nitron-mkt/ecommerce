@@ -1,5 +1,5 @@
 // any-produto-patch: muda categoria e/ou escopo de preço de produtos no Anymarket (merge-patch). Log em anymarket_produto_patch_log.
-// POST {secret, senha, confirmar?, itens:[{product_id, category_id?, price_scope?}]}  (até 25 por chamada; sem confirmar = prévia)
+// POST {secret, senha, confirmar?, itens:[{product_id, category_id?, price_scope?} | {sku_id, product_id?, ean}]}  (até 25 por chamada; sem confirmar = prévia)
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json'};
@@ -19,6 +19,21 @@ Deno.serve(async(req)=>{
     await c.queryObject(`CREATE TABLE IF NOT EXISTS anymarket_produto_patch_log (id bigserial primary key, product_id text, antes jsonb, patch jsonb, http int, resposta text, em timestamptz default now())`);
     const out:any[]=[];
     for(const it of (b.itens||[]).slice(0,25)){
+      if(it.sku_id&&it.ean!==undefined){ // EAN do SKU
+        const g=await fetch(`${base}/skus/${it.sku_id}`,{headers:H}); const sj:any=await g.json().catch(()=>null);
+        if(g.status!==200){ out.push({sku_id:it.sku_id,erro:'GET sku '+g.status}); continue; }
+        if(b.confirmar!==true){ out.push({sku_id:it.sku_id,antes:sj.ean,depois:it.ean}); continue; }
+        const tent:any[]=[]; let ok=false;
+        const vmap:any={}; for(const v of (sj.variations||[])) vmap[v.type?.name||'Cor']=v.description;
+        const skb:any={title:sj.title,partnerId:sj.partnerId,ean:String(it.ean),amount:sj.amount,price:sj.price,sellPrice:sj.sellPrice,additionalTime:sj.additionalTime,active:sj.active,variations:vmap};
+        for(const [m,p,ct,bd] of [['PATCH',`/skus/${it.sku_id}`,'application/merge-patch+json',{ean:String(it.ean)}],['PUT',`/products/${it.product_id}/skus/${it.sku_id}`,'application/json',skb],['PUT',`/skus/${it.sku_id}`,'application/json',{...sj,ean:String(it.ean)}]] as any){
+          if(p.includes('undefined')) continue;
+          const r=await fetch(base+p,{method:m,headers:{...H,'Content-Type':ct},body:JSON.stringify(bd)}); const t=await r.text(); tent.push({m,p,http:r.status,t:t.slice(0,200)});
+          await c.queryObject({text:`INSERT INTO anymarket_produto_patch_log (product_id,antes,patch,http,resposta) VALUES ($1,$2,$3,$4,$5)`,args:['sku:'+it.sku_id,JSON.stringify({ean:sj.ean}),JSON.stringify({ean:it.ean,via:m+' '+p}),r.status,t.slice(0,400)]});
+          if(r.status>=200&&r.status<300){ok=true;break;}
+        }
+        out.push({sku_id:it.sku_id,ok,tent}); continue;
+      }
       const g=await fetch(`${base}/products/${it.product_id}`,{headers:H}); const pj:any=await g.json().catch(()=>null);
       if(g.status!==200){ out.push({product_id:it.product_id,erro:'GET '+g.status}); continue; }
       const patch:any={}; if(it.category_id) patch.category={id:Number(it.category_id)}; if(it.price_scope) patch.definitionPriceScope=String(it.price_scope);
