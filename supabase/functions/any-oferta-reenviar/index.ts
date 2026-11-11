@@ -1,5 +1,6 @@
 // any-oferta-reenviar: força nova transmissão de ofertas (anúncios) do Anymarket com PUT do próprio conteúdo da oferta.
-// POST {secret, senha, confirmar?, itens:[{sku_id, offer_id}]}  (até 20 por chamada; sem confirmar = prévia). Log em anymarket_reenvio_log.
+// acao:'pausar'|'ativar' muda o status da oferta (PAUSED/ACTIVE).
+// POST {secret, senha, confirmar?, acao?, itens:[{sku_id, offer_id}]}  (até 20 por chamada; sem confirmar = prévia). Log em anymarket_reenvio_log.
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json'};
@@ -23,6 +24,16 @@ Deno.serve(async(req)=>{
       const o=(Array.isArray(arr)?arr:[]).find((x:any)=>String(x.id)===String(it.offer_id));
       if(!o){ out.push({...it,erro:'oferta não encontrada'}); continue; }
       if(b.confirmar!==true){ out.push({...it,acc:o.idAccount,tr:o.transmissionStatus}); continue; }
+      if(b.acao==='pausar'||b.acao==='ativar'){
+        const st=b.acao==='pausar'?'PAUSED':'ACTIVE'; const tent:any[]=[];
+        for(const [m,p,bd] of [['PUT',`/skus/${it.sku_id}/marketplaces/${it.offer_id}`,{price:o.price,discountPrice:o.discountPrice,fields:o.fields||{},additionalTime:o.additionalTime||0,publicationStatus:st,status:st}]] as any){
+          const r=await fetch(base+p,{method:m,headers:H,body:JSON.stringify(bd)}); const t=await r.text(); let ps=null; try{ps=JSON.parse(t).publicationStatus;}catch{}
+          tent.push({m,p,http:r.status,ps,t:t.slice(0,200)});
+          await c.queryObject({text:`INSERT INTO anymarket_reenvio_log (sku_id,offer_id,http,resposta) VALUES ($1,$2,$3,$4)`,args:[String(it.sku_id),String(it.offer_id),r.status,(b.acao+' '+t).slice(0,400)]});
+          if(r.status<300) break;
+        }
+        out.push({...it,acc:o.idAccount,antes:o.publicationStatus,tent}); continue;
+      }
       const body={price:o.price,discountPrice:o.discountPrice,fields:o.fields||{},additionalTime:o.additionalTime||0};
       const r=await fetch(`${base}/skus/${it.sku_id}/marketplaces/${it.offer_id}`,{method:'PUT',headers:H,body:JSON.stringify(body)}); const t=await r.text();
       await c.queryObject({text:`INSERT INTO anymarket_reenvio_log (sku_id,offer_id,http,resposta) VALUES ($1,$2,$3,$4)`,args:[String(it.sku_id),String(it.offer_id),r.status,t.slice(0,400)]});
