@@ -6,7 +6,8 @@ const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Content-Type':'application/json'};
 const J=(o:any,s=200)=>new Response(JSON.stringify(o,(_k,v)=>typeof v==='bigint'?Number(v):v),{status:s,headers:CORS});
 async function sha(s:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-const norm=(s:string)=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase();
+const fixPut=(p:any,ch:any[])=>({...p,characteristics:ch,skus:(p.skus||[]).map((k:any)=>{const v:any={}; for(const x of (Array.isArray(k.variations)?k.variations:[])) v[x.type?.name||'Cor']=x.description; return {...k,variations:Array.isArray(k.variations)?v:k.variations};})});
+const norm=(s:string)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 Deno.serve(async(req)=>{
   if(req.method==='OPTIONS') return new Response('ok',{headers:CORS});
   const u=new URL(req.url); const c=new Client(DB); await c.connect();
@@ -45,9 +46,16 @@ Deno.serve(async(req)=>{
         for(const ch of chars){ const i=novo.findIndex((x:any)=>norm(x.name)===norm(ch.name)); if(i>=0) novo[i].value=String(ch.value); else novo.push({index:novo.length+1,name:String(ch.name),value:String(ch.value)}); }
         if(JSON.stringify(novo)===JSON.stringify(antes)){ out.push({product_id:pid,ja_ok:true}); continue; }
         // tenta PATCH (JSON Patch) só do campo; se a API recusar, cai p/ PUT do produto inteiro com as características novas
-        let r=await fetch(`${base}/products/${pid}`,{method:'PATCH',headers:{...H,'Content-Type':'application/merge-patch+json'},body:JSON.stringify({characteristics:novo})}); let t=await r.text(); let via='patch-merge';
+        // merge-patch do Any só acrescenta/altera; para REMOVER usa JSON Patch replace (e confere com GET depois)
+        let r:any, t='', via='';
+        if(rem.length){ r=await fetch(`${base}/products/${pid}`,{method:'PATCH',headers:{...H,'Content-Type':'application/json-patch+json'},body:JSON.stringify([{op:'replace',path:'/characteristics',value:novo}])}); t=await r.text(); via='json-patch'+(r.status>=300?'('+r.status+':'+t.slice(0,80)+')':''); }
+        else { r=await fetch(`${base}/products/${pid}`,{method:'PATCH',headers:{...H,'Content-Type':'application/merge-patch+json'},body:JSON.stringify({characteristics:novo})}); t=await r.text(); via='patch-merge'; }
         if(!(r.status>=200&&r.status<300)){ r=await fetch(`${base}/products/${pid}`,{method:'PATCH',headers:H,body:JSON.stringify([{op:'replace',path:'/characteristics',value:novo}])}); t=await r.text(); via='patch-json'; }
-        if(!(r.status>=200&&r.status<300)){ r=await fetch(`${base}/products/${pid}`,{method:'PUT',headers:H,body:JSON.stringify({...pj,characteristics:novo})}); t=await r.text(); via='put'; }
+        if(!(r.status>=200&&r.status<300)){ r=await fetch(`${base}/products/${pid}`,{method:'PUT',headers:H,body:JSON.stringify(fixPut(pj,novo))}); t=await r.text(); via='put'; }
+        if(rem.length&&r.status>=200&&r.status<300){ const g2=await fetch(`${base}/products/${pid}`,{headers:H}); const p2:any=await g2.json().catch(()=>null); const ainda=(p2?.characteristics||[]).filter((x:any)=>rem.some(n=>norm(n)===norm(x.name))).map((x:any)=>x.name);
+          if(ainda.length){ r=await fetch(`${base}/products/${pid}`,{method:'PUT',headers:H,body:JSON.stringify(fixPut(p2,novo))}); t=await r.text(); via+='+put';
+            const g3=await fetch(`${base}/products/${pid}`,{headers:H}); const p3:any=await g3.json().catch(()=>null); const ainda2=(p3?.characteristics||[]).filter((x:any)=>rem.some(n=>norm(n)===norm(x.name))).map((x:any)=>x.name);
+            if(ainda2.length){ via+=' (NAO removeu: '+ainda2.join(',')+')'; r={status:409}; t='ainda presente: '+ainda2.join(','); } } }
         await c.queryObject({text:`INSERT INTO anymarket_carac_log (product_id,antes,depois,http,resposta) VALUES ($1,$2,$3,$4,$5)`,args:[pid,JSON.stringify(antes),JSON.stringify(novo),r.status,t.slice(0,400)]});
         out.push({product_id:pid,ok:r.status>=200&&r.status<300,via,http:r.status,erro:r.status>=300?t.slice(0,240):undefined});
       }
