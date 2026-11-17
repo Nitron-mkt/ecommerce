@@ -1,6 +1,6 @@
 // any-oferta-reenviar: força nova transmissão de ofertas (anúncios) do Anymarket com PUT do próprio conteúdo da oferta.
 // acao:'pausar'|'ativar' muda o status da oferta (PAUSED/ACTIVE); 'excluir' apaga oferta NUNCA publicada (sem idInMarketplace).
-// POST {secret, senha, confirmar?, acao?, itens:[{sku_id, offer_id, attributes?}]}  (até 20 por chamada; sem confirmar = prévia). Log em anymarket_reenvio_log.
+// POST {secret, senha, confirmar?, acao?, itens:[{sku_id, offer_id, attributes?, price?}]}  price = novo preço da oferta  (até 20 por chamada; sem confirmar = prévia). Log em anymarket_reenvio_log.
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json'};
@@ -40,12 +40,13 @@ Deno.serve(async(req)=>{
         }
         out.push({...it,acc:o.idAccount,antes:o.publicationStatus,tent}); continue;
       }
-      const body:any={price:o.price,discountPrice:o.discountPrice,fields:o.fields||{},additionalTime:o.additionalTime||0};
+      const novoP=Number(it.price)>0?Math.round(Number(it.price)*100)/100:null;
+      const body:any={price:novoP??o.price,discountPrice:novoP??o.discountPrice,fields:o.fields||{},additionalTime:o.additionalTime||0};
       if(it.attributes&&typeof it.attributes==='object') body.attributes={...(o.attributes||{}),...it.attributes};
       const r=await fetch(`${base}/skus/${it.sku_id}/marketplaces/${it.offer_id}`,{method:'PUT',headers:H,body:JSON.stringify(body)}); const t=await r.text();
       await c.queryObject({text:`INSERT INTO anymarket_reenvio_log (sku_id,offer_id,http,resposta) VALUES ($1,$2,$3,$4)`,args:[String(it.sku_id),String(it.offer_id),r.status,t.slice(0,400)]});
-      let tr=null,at=null; try{const jj=JSON.parse(t);tr=jj.transmissionStatus;at=jj.attributes;}catch{}
-      out.push({...it,ok:r.status>=200&&r.status<300,http:r.status,tr,at,erro:r.status>=300?t.slice(0,300):undefined});
+      let tr=null,at=null,pr=null; try{const jj=JSON.parse(t);tr=jj.transmissionStatus;at=jj.attributes;pr=jj.price;}catch{}
+      out.push({...it,ok:r.status>=200&&r.status<300,http:r.status,tr,preco_antes:o.price,preco_agora:pr,at,erro:r.status>=300?t.slice(0,300):undefined});
     }
     return J({confirmar:b.confirmar===true,out});
   }catch(e){ return J({error:String(e).slice(0,400)},500); } finally{ await c.end(); }
