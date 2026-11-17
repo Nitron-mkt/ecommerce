@@ -1,5 +1,5 @@
 // any-produto-patch: muda categoria e/ou escopo de preço de produtos no Anymarket (merge-patch). Log em anymarket_produto_patch_log.
-// POST {secret, senha, confirmar?, itens:[{product_id, category_id?, price_scope?} | {sku_id, product_id?, ean} | {sku_id, product_id, partner_id?, active?, product_active?}]}  (até 25 por chamada; sem confirmar = prévia)
+// POST {secret, senha, confirmar?, itens:[{product_id, category_id?, price_scope?, video_url?} | {sku_id, product_id?, ean} | {sku_id, product_id, partner_id?, active?, product_active?}]}  (até 25 por chamada; sem confirmar = prévia)
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json'};
@@ -49,12 +49,12 @@ Deno.serve(async(req)=>{
       }
       const g=await fetch(`${base}/products/${it.product_id}`,{headers:H}); const pj:any=await g.json().catch(()=>null);
       if(g.status!==200){ out.push({product_id:it.product_id,erro:'GET '+g.status}); continue; }
-      const patch:any={}; if(it.category_id) patch.category={id:Number(it.category_id)}; if(it.price_scope) patch.definitionPriceScope=String(it.price_scope);
-      const antes={category:pj.category,definitionPriceScope:pj.definitionPriceScope};
+      const patch:any={}; if(it.video_url!==undefined) patch.videoUrl=it.video_url; if(it.category_id) patch.category={id:Number(it.category_id)}; if(it.price_scope) patch.definitionPriceScope=String(it.price_scope);
+      const antes={category:pj.category,definitionPriceScope:pj.definitionPriceScope,videoUrl:pj.videoUrl};
       if(b.confirmar!==true){ out.push({product_id:it.product_id,title:pj.title,antes,patch}); continue; }
       const r=await fetch(`${base}/products/${it.product_id}`,{method:'PATCH',headers:{...H,'Content-Type':'application/merge-patch+json'},body:JSON.stringify(patch)}); const t=await r.text();
       await c.queryObject({text:`INSERT INTO anymarket_produto_patch_log (product_id,antes,patch,http,resposta) VALUES ($1,$2,$3,$4,$5)`,args:[String(it.product_id),JSON.stringify(antes),JSON.stringify(patch),r.status,t.slice(0,400)]});
-      let depois:any=null; try{const j=JSON.parse(t); depois={category:j.category?.name,scope:j.definitionPriceScope};}catch{}
+      let depois:any=null; try{const j=JSON.parse(t); depois={category:j.category?.name,scope:j.definitionPriceScope,videoUrl:j.videoUrl};}catch{}
       out.push({product_id:it.product_id,ok:r.status>=200&&r.status<300,http:r.status,depois,erro:r.status>=300?t.slice(0,300):undefined});
     }
     return J({confirmar:b.confirmar===true,out});
