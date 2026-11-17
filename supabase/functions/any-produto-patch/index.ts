@@ -1,5 +1,5 @@
 // any-produto-patch: muda categoria e/ou escopo de preço de produtos no Anymarket (merge-patch). Log em anymarket_produto_patch_log.
-// POST {secret, senha, confirmar?, itens:[{product_id, category_id?, price_scope?} | {sku_id, product_id?, ean}]}  (até 25 por chamada; sem confirmar = prévia)
+// POST {secret, senha, confirmar?, itens:[{product_id, category_id?, price_scope?} | {sku_id, product_id?, ean} | {sku_id, product_id, partner_id?, active?, product_active?}]}  (até 25 por chamada; sem confirmar = prévia)
 import { Client } from 'https://deno.land/x/postgres@v0.19.3/mod.ts';
 const DB=Deno.env.get('SUPABASE_DB_URL')!;
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json'};
@@ -19,6 +19,19 @@ Deno.serve(async(req)=>{
     await c.queryObject(`CREATE TABLE IF NOT EXISTS anymarket_produto_patch_log (id bigserial primary key, product_id text, antes jsonb, patch jsonb, http int, resposta text, em timestamptz default now())`);
     const out:any[]=[];
     for(const it of (b.itens||[]).slice(0,25)){
+      if(it.sku_id&&(it.partner_id!==undefined||it.active!==undefined)&&it.ean===undefined){ // reativar/renomear SKU (e produto)
+        const g=await fetch(`${base}/skus/${it.sku_id}`,{headers:H}); const sj:any=await g.json().catch(()=>null);
+        if(g.status!==200){ out.push({sku_id:it.sku_id,erro:'GET sku '+g.status}); continue; }
+        if(b.confirmar!==true){ out.push({sku_id:it.sku_id,antes:{partnerId:sj.partnerId,active:sj.active},depois:{partnerId:it.partner_id??sj.partnerId,active:it.active??sj.active}}); continue; }
+        const tent:any[]=[];
+        if(it.product_active===true&&it.product_id){ const r=await fetch(`${base}/products/${it.product_id}`,{method:'PATCH',headers:{...H,'Content-Type':'application/merge-patch+json'},body:JSON.stringify({isProductActive:true})}); tent.push({p:'produto ativo',http:r.status,t:(await r.text()).slice(0,150)}); }
+        const vmap:any={}; for(const v of (sj.variations||[])) vmap[v.type?.name||'Cor']=v.description;
+        const skb:any={title:sj.title,partnerId:String(it.partner_id??sj.partnerId),ean:sj.ean,amount:sj.amount,price:sj.price,sellPrice:sj.sellPrice,additionalTime:sj.additionalTime,active:it.active??sj.active};
+        if(Object.keys(vmap).length) skb.variations=vmap;
+        const r=await fetch(`${base}/products/${it.product_id}/skus/${it.sku_id}`,{method:'PUT',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(skb)}); const t=await r.text(); tent.push({p:'sku',http:r.status,t:t.slice(0,200)});
+        await c.queryObject({text:`INSERT INTO anymarket_produto_patch_log (product_id,antes,patch,http,resposta) VALUES ($1,$2,$3,$4,$5)`,args:['sku:'+it.sku_id,JSON.stringify({partnerId:sj.partnerId,active:sj.active}),JSON.stringify({partnerId:skb.partnerId,active:skb.active}),r.status,t.slice(0,400)]});
+        out.push({sku_id:it.sku_id,ok:r.status>=200&&r.status<300,tent}); continue;
+      }
       if(it.sku_id&&it.ean!==undefined){ // EAN do SKU
         const g=await fetch(`${base}/skus/${it.sku_id}`,{headers:H}); const sj:any=await g.json().catch(()=>null);
         if(g.status!==200){ out.push({sku_id:it.sku_id,erro:'GET sku '+g.status}); continue; }
